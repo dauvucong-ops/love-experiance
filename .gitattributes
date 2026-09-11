@@ -1,0 +1,20 @@
+# Chuẩn hóa line ending: lưu LF trong repo, checkout theo OS
+* text=auto
+
+# Force LF cho các file text quan trọng (tránh vỡ file trên server Linux)
+*.html text eol=lf
+*.css  text eol=lf
+*.js   text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
+*.txt  text eol=lf
+
+# Binary — không chuyển đổi
+*.jpg  binary
+*.jpeg binary
+*.png  binary
+*.gif  binary
+*.ico  binary
+*.mp3  binary
+*.mp4  binary
+*.webp binary

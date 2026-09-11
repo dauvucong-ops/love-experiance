@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Our Love Journey</title>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="./style.css">
+
+  <!-- GSAP 3.12.5 & MotionPathPlugin CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/MotionPathPlugin.min.js"></script>
+</head>
+<body>
+  <!-- Container cho toàn bộ cảnh / viewport -->
+  <main class="scene-container">
+    <!-- Khu vực bản đồ / SVG Path & Nhân vật -->
+    <div id="map-container">
+      <svg id="journey-svg" viewBox="0 0 1000 600" xmlns="http://www.w3.org/2000/svg">
+        <!-- Đường dẫn (Path) mẫu kết nối 7 điểm mốc -->
+        <path id="journey-path" d="" fill="none" stroke="transparent" />
+        
+        <!-- Nhân vật di chuyển dọc path -->
+        <g id="character">
+          <!-- Placeholder hình nhân vật -->
+        </g>
+      </svg>
+    </div>
+
+    <!-- Khu vực hiển thị câu hỏi trắc nghiệm & tương tác -->
+    <section id="quiz-container" aria-live="polite">
+      <div id="scene-info">
+        <span id="scene-indicator"></span>
+        <h2 id="scene-title"></h2>
+      </div>
+
+      <!-- Khối nhật ký kỷ niệm trước khi hiện câu hỏi -->
+      <div id="journal-container">
+        <p id="journal-text"></p>
+        <button id="continue-btn">Tiếp tục</button>
+      </div>
+
+      <div id="question-box">
+        <p id="question-text"></p>
+        <div id="options-list"></div>
+      </div>
+
+      <div id="hint-box">
+        <p id="hint-text"></p>
+      </div>
+
+      <div id="feedback-message"></div>
+
+      <!-- Khu vực hiển thị media sau khi mở khóa scene -->
+      <div id="media-container"></div>
+    </section>
+
+    <!-- Khu vực hiển thị kết bài (Epilogue - Scene 7) -->
+    <section id="epilogue-container" class="hidden">
+      <div id="epilogue-content">
+        <h2 id="epilogue-title"></h2>
+        <p id="epilogue-message"></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Dữ liệu & Logic -->
+  <script src="./content.js"></script>  <!-- Nội dung văn bản — chỉnh sửa tại đây -->
+  <script src="./data.js"></script>     <!-- Dữ liệu kỹ thuật + merge → SCENES_DATA -->
+  <script src="./main.js"></script>     <!-- Logic game (GameController) -->
+</body>
+</html>

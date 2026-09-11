@@ -1,0 +1,627 @@
+/* ==========================================================================
+   LOVE JOURNEY - STYLESHEET (Mobile-First)
+   Tông màu: Kem ấm, hồng phấn, đỏ đô lãng mạn & vàng champagne
+   ========================================================================== */
+
+/* --- CSS Variables & Design Tokens --- */
+:root {
+  /* Bảng màu ấm áp, lãng mạn */
+  --bg-gradient-start: #fffaf6;
+  --bg-gradient-end: #fcedea;
+  --card-bg: rgba(255, 255, 255, 0.88);
+  --card-border: rgba(235, 203, 209, 0.6);
+  --card-shadow: 0 10px 25px -5px rgba(184, 74, 91, 0.08), 0 8px 10px -6px rgba(184, 74, 91, 0.04);
+  
+  /* Màu chủ đạo & nhấn */
+  --primary-color: #b84a5b;
+  --primary-light: #fbebee;
+  --primary-hover: #9e3948;
+  --accent-gold: #d4a373;
+  --accent-gold-light: #fdf5ea;
+  --accent-rose: #e58c99;
+
+  /* Màu chữ */
+  --text-main: #2e2328;
+  --text-muted: #7d6b73;
+  --text-light: #a4939a;
+
+  /* Trạng thái Feedback */
+  --success-color: #438e70;
+  --success-bg: #eaf6f0;
+  --error-color: #cb5343;
+  --error-bg: #fdeee9;
+
+  /* Typography */
+  --font-serif: "Playfair Display", "Times New Roman", Georgia, serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* Radius & Hiệu ứng */
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 8px;
+  --radius-pill: 50px;
+  --transition-smooth: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* --- Reset cơ bản --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  color: var(--text-main);
+  background: linear-gradient(175deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+  background-attachment: fixed;
+  line-height: 1.6;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* --- Utility Classes --- */
+.hidden {
+  display: none !important;
+}
+
+/* --- Container chính (Mobile-First: 360px - 430px) --- */
+.scene-container {
+  width: 100%;
+  max-width: 440px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 16px 16px 32px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+}
+
+/* ==========================================================================
+   1. BẢN ĐỒ HÀNH TRÌNH & SVG PATH (#map-container)
+   ========================================================================== */
+#map-container {
+  width: 100%;
+  height: 170px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
+  padding: 10px;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Hiệu ứng mây trôi hoặc vệt sáng nền cho bản đồ */
+#map-container::before {
+  content: "";
+  position: absolute;
+  top: -40%;
+  right: -20%;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(229, 140, 153, 0.22) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+#journey-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+/* Đường dẫn SVG */
+#journey-path {
+  stroke: var(--accent-rose);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 6 6;
+  opacity: 0.65;
+  transition: opacity 0.5s ease;
+}
+
+/* Nhân vật (Avatar / Chấm sáng chuyển động) */
+#character {
+  cursor: pointer;
+  filter: drop-shadow(0 2px 8px rgba(184, 74, 91, 0.45));
+}
+
+#character circle,
+#character .avatar-dot {
+  fill: var(--primary-color);
+  stroke: #ffffff;
+  stroke-width: 2.5;
+  animation: characterPulse 2s infinite ease-in-out;
+}
+
+@keyframes characterPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+/* ==========================================================================
+   2. KHU VỰC TƯƠNG TÁC (#quiz-container)
+   ========================================================================== */
+#quiz-container {
+  width: 100%;
+  background: var(--card-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  animation: fadeInUp 0.5s ease-out;
+}
+
+/* Thông tin cảnh hiện tại */
+#scene-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px dashed rgba(229, 140, 153, 0.4);
+  padding-bottom: 12px;
+}
+
+#scene-indicator {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-gold);
+}
+
+#scene-title {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  line-height: 1.35;
+}
+
+/* ==========================================================================
+   3. KHỐI NHẬT KÝ KỶ NIỆM (#journal-container)
+   ========================================================================== */
+#journal-container {
+  background: linear-gradient(135deg, rgba(255, 250, 245, 0.95), rgba(253, 242, 238, 0.9));
+  border-left: 3.5px solid var(--accent-rose);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  box-shadow: 0 4px 15px rgba(229, 140, 153, 0.08);
+  animation: journalSlideIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Dấu trích dẫn trang trí nhật ký */
+#journal-container::before {
+  content: "“";
+  position: absolute;
+  top: -6px;
+  right: 14px;
+  font-family: var(--font-serif);
+  font-size: 3.5rem;
+  line-height: 1;
+  color: rgba(229, 140, 153, 0.2);
+  pointer-events: none;
+}
+
+#journal-text {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.98rem;
+  line-height: 1.7;
+  color: var(--text-main);
+  position: relative;
+  z-index: 1;
+}
+
+/* Nút Tiếp tục để chuyển sang câu hỏi */
+#continue-btn {
+  align-self: flex-end;
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-rose));
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 9px 20px;
+  border: none;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 4px 12px rgba(184, 74, 91, 0.28);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#continue-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(184, 74, 91, 0.38);
+}
+
+#continue-btn:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* ==========================================================================
+   4. KHỐI CÂU HỎI TRẮC NGHIỆM (#question-box)
+   ========================================================================== */
+#question-box {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: fadeInUp 0.45s ease-out;
+}
+
+#question-text {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.45;
+}
+
+/* Danh sách các nút lựa chọn */
+#options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Tùy chọn trắc nghiệm */
+.option-btn {
+  width: 100%;
+  background: #ffffff;
+  border: 1.5px solid rgba(229, 140, 153, 0.35);
+  border-radius: var(--radius-md);
+  padding: 13px 16px;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-main);
+  text-align: left;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  position: relative;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.option-btn:hover {
+  border-color: var(--accent-rose);
+  background: var(--primary-light);
+  transform: translateX(3px);
+}
+
+.option-btn:active {
+  transform: scale(0.99);
+}
+
+/* ==========================================================================
+   5. HIỆU ỨNG PHẢN HỒI ĐÚNG / SAI (FEEDBACK)
+   ========================================================================== */
+/* Đáp án đúng */
+.option-btn.correct,
+.option-btn.is-correct {
+  background: var(--success-bg) !important;
+  border-color: var(--success-color) !important;
+  color: var(--success-color) !important;
+  font-weight: 600;
+  animation: pulseSuccess 0.6s ease-out;
+}
+
+/* Đáp án sai */
+.option-btn.wrong,
+.option-btn.is-wrong {
+  background: var(--error-bg) !important;
+  border-color: var(--error-color) !important;
+  color: var(--error-color) !important;
+  animation: shakeError 0.5s ease-in-out;
+}
+
+/* Rung lắc khi sai */
+@keyframes shakeError {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+/* Tỏa sáng khi đúng */
+@keyframes pulseSuccess {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(67, 142, 112, 0.4); }
+  50% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(67, 142, 112, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(67, 142, 112, 0); }
+}
+
+/* Khối gợi ý (Hint) */
+#hint-box {
+  background: var(--accent-gold-light);
+  border: 1px dashed var(--accent-gold);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: #8c6239;
+  line-height: 1.5;
+  animation: fadeIn 0.4s ease;
+}
+
+/* Tin nhắn phản hồi */
+#feedback-message {
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  min-height: 22px;
+  transition: var(--transition-smooth);
+}
+
+#feedback-message.success {
+  color: var(--success-color);
+}
+
+#feedback-message.error {
+  color: var(--error-color);
+}
+
+/* Container Media hiển thị sau khi mở khóa */
+#media-container {
+  width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+#media-container img {
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  animation: fadeInUp 0.5s ease;
+}
+
+#media-container audio {
+  width: 100%;
+  margin-top: 6px;
+}
+
+/* ==========================================================================
+   6. SCENE HỒI KẾT (#epilogue-container) - NỔI BẬT & ĐẶC BIỆT
+   ========================================================================== */
+#epilogue-container {
+  width: 100%;
+  background: linear-gradient(160deg, #ffffff 0%, #fff7f3 45%, #fbebee 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 15px 35px -5px rgba(184, 74, 91, 0.2), 0 0 25px rgba(212, 163, 115, 0.15);
+  padding: 28px 22px;
+  position: relative;
+  overflow: hidden;
+  animation: epilogueAppear 0.8s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+/* Viền ánh kim rose-gold tinh tế quanh epilogue */
+#epilogue-container::before {
+  content: "";
+  position: absolute;
+  top: -2px; left: -2px; right: -2px; bottom: -2px;
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent-rose), #ffd1ba, var(--accent-gold));
+  z-index: -1;
+  border-radius: calc(var(--radius-lg) + 2px);
+  animation: borderRotate 6s linear infinite;
+}
+
+/* Trái tim trang trí góc trên */
+#epilogue-container::after {
+  content: "❤";
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  font-size: 1.5rem;
+  color: var(--accent-rose);
+  opacity: 0.35;
+  animation: heartFloat 3s infinite ease-in-out;
+}
+
+#epilogue-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+}
+
+#epilogue-title {
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
+
+#epilogue-message {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  line-height: 1.85;
+  color: var(--text-main);
+  padding: 0 4px;
+  white-space: pre-line;
+}
+
+/* ==========================================================================
+   7. KEYFRAMES & TRANSITIONS DÙNG CHO CHUYỂN CẢNH
+   ========================================================================== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes journalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes epilogueAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes heartFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(6deg);
+  }
+}
+
+/* Các lớp tiện ích cho animation chuyển đổi qua JS */
+.fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.fade-out {
+  animation: fadeOut 0.3s ease forwards;
+}
+
+.slide-up {
+  animation: fadeInUp 0.45s ease forwards;
+}
+
+/* Viền xoay ánh kim cho epilogue (được tham chiếu bởi #epilogue-container::before) */
+@keyframes borderRotate {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Nút chuyển sang scene tiếp theo (được tạo động bởi JS sau khi hiện media) */
+.next-scene-btn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 11px 20px;
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-rose));
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border: none;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 4px 14px rgba(184, 74, 91, 0.28);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.next-scene-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(184, 74, 91, 0.38);
+}
+
+.next-scene-btn:active {
+  transform: scale(0.98);
+}
+
+/* ==========================================================================
+   8. RESPONSIVE CHO MÀN HÌNH LỚN HƠN (TABLET / DESKTOP)
+   ========================================================================== */
+@media (min-width: 600px) {
+  body {
+    padding: 30px 16px;
+    align-items: center;
+  }
+
+  .scene-container {
+    max-width: 460px;
+    min-height: auto;
+    border-radius: var(--radius-lg);
+  }
+
+  #map-container {
+    height: 190px;
+  }
+
+  #quiz-container {
+    padding: 26px 24px;
+  }
+
+  #scene-title {
+    font-size: 1.35rem;
+  }
+
+  #journal-text {
+    font-size: 1.02rem;
+  }
+}

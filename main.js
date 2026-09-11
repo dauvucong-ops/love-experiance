@@ -183,7 +183,7 @@ class GameController {
       this.continueBtn.addEventListener('click', () => {
         // Ẩn journal với fade-out
         this.journalContainer.classList.add('fade-out');
-        this.journalContainer.addEventListener('animationend', () => {
+        setTimeout(() => {
           this.journalContainer.classList.add('hidden');
           this.journalContainer.classList.remove('fade-out');
           // Hiện question-box với slide-up
@@ -193,7 +193,7 @@ class GameController {
             this.questionBox.classList.remove('slide-up');
           }, { once: true });
           this.renderScene();
-        }, { once: true });
+        }, 300);
       }, { once: true });
     } else {
       // Không có journal → vào câu hỏi luôn

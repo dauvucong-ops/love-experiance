@@ -1,6 +1,38 @@
 /**
  * Class GameController — điều khiển toàn bộ luồng game
  */
+
+// ══════════════════════════════════════════════════════════════
+// generateCoordinates(count) — tự sinh toạ độ SVG cho N scenes
+//
+// Tạo ra N điểm phân bố theo sóng sin 1.5 chu kỳ trong viewBox
+// 1000×600, co giãn tự động dù có 3 hay 20 kỷ niệm.
+// Thay thế hoàn toàn pathCoordinate hardcode trong data.js.
+// ══════════════════════════════════════════════════════════════
+function generateCoordinates(count) {
+  const W = 1000, H = 600;
+  const padX = 80, padY = 90;
+  const midY = H / 2;                         // 300
+  const amplitude = (H / 2 - padY) * 0.65;   // ≈ 137 — biên độ dao động
+
+  if (count === 1) return [{ x: W / 2, y: midY }];
+  if (count === 2) return [
+    { x: padX,     y: midY + amplitude },
+    { x: W - padX, y: midY - amplitude }
+  ];
+
+  return Array.from({ length: count }, (_, i) => {
+    const t = i / (count - 1);                // 0 → 1
+    const x = Math.round(padX + t * (W - 2 * padX));
+    // 1.5 chu kỳ sin: mid → cao → mid → thấp → mid → cao → mid  (cho 7 điểm)
+    const y = Math.round(midY - amplitude * Math.sin(t * Math.PI * 3));
+    return {
+      x,
+      y: Math.max(padY, Math.min(H - padY, y))  // giữ trong vùng đệm
+    };
+  });
+}
+
 class GameController {
   /**
    * @param {Array<Object>} scenesData - Mảng 7 cảnh từ data.js
@@ -37,21 +69,24 @@ class GameController {
 
   // ══════════════════════════════════════════════════════════════
   // buildJourneyPath — tạo chuỗi d="" cho #journey-path
-  //   Dùng thuật toán Catmull-Rom → Cubic Bézier để nối mượt
-  //   7 toạ độ pathCoordinate thành 1 đường cong liên tục.
+  //   Gọi generateCoordinates() để tính toạ độ SVG động (không
+  //   còn phụ thuộc vào pathCoordinate hardcode trong data.js).
+  //   Gán lại pathCoordinate cho từng scene để unlockNextScene()
+  //   và _placeCharacterAt() vẫn hoạt động bình thường.
   // ══════════════════════════════════════════════════════════════
   buildJourneyPath() {
-    const pts = this.scenesData.map(s => s.pathCoordinate);
+    // ── Tính toạ độ động theo số lượng scene hiện tại ─────────
+    const coords = generateCoordinates(this.scenesData.length);
 
-    // ── Scale toạ độ SVG (viewBox 1000×600) sang pixel map-container ──
-    // Không cần: GSAP & MotionPathPlugin làm việc trong không gian
-    // viewBox của SVG, nên dùng toạ độ gốc trực tiếp.
+    // Gán lại pathCoordinate (quan trọng: unlockNextScene đọc field này)
+    this.scenesData.forEach((scene, i) => {
+      scene.pathCoordinate = coords[i];
+    });
+
+    const pts = coords;
 
     // ── Catmull-Rom → Bezier helper ───────────────────────────
-    // Với mỗi 4 điểm liên tiếp p0..p3, tính control points
-    // của đoạn Bezier cubic từ p1 tới p2.
-    const catmullToBezier = (p0, p1, p2, p3, alpha = 0.5) => {
-      const t = alpha;
+    const catmullToBezier = (p0, p1, p2, p3) => {
       const cp1x = p1.x + (p2.x - p0.x) / 6;
       const cp1y = p1.y + (p2.y - p0.y) / 6;
       const cp2x = p2.x - (p3.x - p1.x) / 6;
@@ -59,7 +94,7 @@ class GameController {
       return { cp1x, cp1y, cp2x, cp2y };
     };
 
-    // Bổ sung điểm ảo ở hai đầu để đường cong giữ hướng đúng
+    // Bổ sung điểm ảo ở hai đầu để cong mượt tại đầu/cuối path
     const extended = [
       { x: pts[0].x * 2 - pts[1].x, y: pts[0].y * 2 - pts[1].y },
       ...pts,
@@ -67,20 +102,17 @@ class GameController {
         y: pts[pts.length - 1].y * 2 - pts[pts.length - 2].y }
     ];
 
-    // Xây chuỗi d
+    // Xây chuỗi d SVG
     let d = `M ${pts[0].x} ${pts[0].y}`;
     for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = extended[i];
-      const p1 = extended[i + 1]; // pts[i]
-      const p2 = extended[i + 2]; // pts[i+1]
-      const p3 = extended[i + 3];
-      const { cp1x, cp1y, cp2x, cp2y } = catmullToBezier(p0, p1, p2, p3);
-      d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${pts[i + 1].x} ${pts[i + 1].y}`;
+      const { cp1x, cp1y, cp2x, cp2y } =
+        catmullToBezier(extended[i], extended[i+1], extended[i+2], extended[i+3]);
+      d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)},` +
+           ` ${cp2x.toFixed(2)} ${cp2y.toFixed(2)},` +
+           ` ${pts[i+1].x} ${pts[i+1].y}`;
     }
 
     this.journeyPath.setAttribute('d', d);
-
-    // ── Render nhân vật (chấm tròn) tại điểm đầu tiên ──────
     this._placeCharacterAt(pts[0]);
   }
 
@@ -340,18 +372,85 @@ class GameController {
       container.appendChild(el);
     }
   }
+
+  // ══════════════════════════════════════════════════════════════
+  // handleScenesUpdate(newScenesData) — xử lý real-time update
+  //   Được gọi khi Firestore gửi snapshot mới (không reload trang).
+  //   Cập nhật đường path SVG và header scene hiện tại.
+  //   KHÔNG reset game state (người chơi vẫn ở scene cũ).
+  // ══════════════════════════════════════════════════════════════
+  handleScenesUpdate(newScenesData) {
+    this.scenesData = newScenesData;
+
+    // Vẽ lại path với số lượng scene mới (pathCoordinate sẽ được tính lại)
+    this.buildJourneyPath();
+
+    // Nếu currentSceneIndex vẫn hợp lệ: cập nhật header nhẹ nhàng
+    if (this.currentSceneIndex < newScenesData.length) {
+      const scene = newScenesData[this.currentSceneIndex];
+      this.sceneIndicator.textContent =
+        `Kỷ niệm ${this.currentSceneIndex + 1} / ${newScenesData.length}`;
+      this.sceneTitle.textContent = scene.sceneName;
+    } else {
+      // Scene hiện tại bị xoá khỏi Firestore → về scene cuối cùng còn lại
+      this.loadScene(newScenesData.length - 1);
+    }
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
-// Khởi động game khi DOM sẵn sàng
+// Khởi động game — dùng Firebase event, fallback về dữ liệu tĩnh
 // ══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  if (typeof SCENES_DATA === 'undefined') {
-    console.error('[LoveJourney] Không tìm thấy SCENES_DATA. Kiểm tra data.js.');
-    return;
+
+  // Helper: khởi tạo game từ một mảng scenes data
+  function startGame(scenesData) {
+    if (window.__LJ_GAME) return; // ngăn khởi tạo trùng lặp
+    const game = new GameController(scenesData);
+    game.buildJourneyPath();
+    game.loadScene(0);
+    window.__LJ_GAME = game;
   }
 
-  const game = new GameController(SCENES_DATA);
-  game.buildJourneyPath();
-  game.loadScene(0);
+  // ── Lắng nghe Firebase: lần đầu có dữ liệu ────────────────
+  window.addEventListener('lj:scenesReady', (e) => {
+    console.log('[LoveJourney] Firebase: dữ liệu sẵn sàng,', e.detail.scenes.length, 'scenes.');
+    startGame(e.detail.scenes);
+  }, { once: true });
+
+  // ── Lắng nghe Firebase: real-time update (Firestore thay đổi) ──
+  window.addEventListener('lj:scenesUpdated', (e) => {
+    if (window.__LJ_GAME) {
+      console.log('[LoveJourney] Firebase: cập nhật real-time,', e.detail.scenes.length, 'scenes.');
+      window.__LJ_GAME.handleScenesUpdate(e.detail.scenes);
+    }
+  });
+
+  // ── Lắng nghe lỗi Firebase: kích hoạt fallback tĩnh ────────
+  window.addEventListener('lj:firestoreError', () => {
+    console.warn('[LoveJourney] Firestore lỗi → dùng dữ liệu tĩnh từ data.js.');
+    if (!window.__LJ_GAME && typeof SCENES_DATA !== 'undefined') {
+      startGame(SCENES_DATA);
+    }
+  }, { once: true });
+
+  window.addEventListener('lj:firestoreEmpty', () => {
+    console.warn('[LoveJourney] Firestore trống → dùng dữ liệu tĩnh từ data.js.');
+    if (!window.__LJ_GAME && typeof SCENES_DATA !== 'undefined') {
+      startGame(SCENES_DATA);
+    }
+  }, { once: true });
+
+  // ── Timeout fallback 6 giây: nếu Firebase không phản hồi ───
+  setTimeout(() => {
+    if (!window.__LJ_GAME) {
+      if (typeof SCENES_DATA !== 'undefined') {
+        console.warn('[LoveJourney] Firebase timeout (6s) → fallback dữ liệu tĩnh.');
+        startGame(SCENES_DATA);
+      } else {
+        console.error('[LoveJourney] Không có dữ liệu. Kiểm tra kết nối mạng và data.js.');
+      }
+    }
+  }, 6000);
 });
+

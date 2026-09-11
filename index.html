@@ -66,9 +66,24 @@
     </section>
   </main>
 
-  <!-- Dữ liệu & Logic -->
-  <script src="./content.js"></script>  <!-- Nội dung văn bản — chỉnh sửa tại đây -->
-  <script src="./data.js"></script>     <!-- Dữ liệu kỹ thuật + merge → SCENES_DATA -->
-  <script src="./main.js"></script>     <!-- Logic game (GameController) -->
+  <!--
+    THỨ TỰ SCRIPT (bắt buộc):
+    1. firebase-config.js  — classic, expose window.FIREBASE_CONFIG
+    2. content.js / data.js — classic, define SCENES_DATA (fallback offline)
+    3. firebase-bridge.js  — type="module" (deferred, chạy trước DOMContentLoaded)
+                             import Firebase CDN, onSnapshot → dispatch events
+    4. main.js             — classic, lắng nghe lj:scenesReady / lj:scenesUpdated
+  -->
+  <script src="./firebase-config.js"></script>
+
+  <!-- Backup tĩnh — vẫn load để main.js dùng làm fallback khi offline/Firestore lỗi -->
+  <script src="./content.js"></script>
+  <script src="./data.js"></script>
+
+  <!-- Firebase bridge (ES Module) -->
+  <script type="module" src="./firebase-bridge.js"></script>
+
+  <!-- Logic game -->
+  <script src="./main.js"></script>
 </body>
 </html>

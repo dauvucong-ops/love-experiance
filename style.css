@@ -62,6 +62,8 @@ body {
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   font-family: var(--font-sans);
   color: var(--text-main);
   background: linear-gradient(175deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
@@ -71,7 +73,7 @@ body {
   justify-content: center;
   align-items: flex-start;
   padding: 0;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 /* --- Utility Classes --- */
@@ -153,9 +155,7 @@ body {
   flex-direction: column;
   box-sizing: border-box;
   padding: max(16px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom)) 18px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
   position: relative;
 }
 
@@ -183,9 +183,7 @@ body {
   position: relative;
   padding: max(16px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom)) 18px;
   box-sizing: border-box;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
   animation: fadeInUp 0.4s ease-out;
 }
 
@@ -478,9 +476,7 @@ body {
   padding: max(24px, env(safe-area-inset-top)) 20px max(32px, env(safe-area-inset-bottom)) 20px;
   box-sizing: border-box;
   position: relative;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -604,6 +600,18 @@ body {
 
 .slide-up {
   animation: fadeInUp 0.45s ease forwards;
+}
+
+/* Hiệu ứng nảy cảnh báo khi vuốt bị khoá (chưa trả lời đúng câu hỏi) */
+@keyframes swipeLockedBounce {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-10px); }
+  50% { transform: translateY(5px); }
+  75% { transform: translateY(-3px); }
+}
+
+.swipe-locked-bounce {
+  animation: swipeLockedBounce 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
 }
 
 /* Viền xoay ánh kim cho epilogue (được tham chiếu bởi #epilogue-container::before) */

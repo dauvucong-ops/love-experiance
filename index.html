@@ -40,36 +40,37 @@
       </svg>
     </div>
 
-    <!-- Khu vực hiển thị câu hỏi trắc nghiệm & tương tác -->
-    <section id="quiz-container" aria-live="polite">
-      <div id="scene-info">
+    <!-- Khu vực hiển thị câu hỏi trắc nghiệm & tương tác (Scene 1-6 full-screen) -->
+    <section id="quiz-container" class="scene-screen" aria-live="polite">
+      <!-- Phần trên: Số đếm kỷ niệm + Tên kỷ niệm -->
+      <header id="scene-info">
         <span id="scene-indicator"></span>
-        <h2 id="scene-title"></h2>
-      </div>
+        <h1 id="scene-title"></h1>
+      </header>
 
       <!-- Khối nhật ký kỷ niệm trước khi hiện câu hỏi -->
       <div id="journal-container">
         <p id="journal-text"></p>
-        <button id="continue-btn">Tiếp tục</button>
+        <button id="continue-btn" type="button">Tiếp tục</button>
       </div>
 
-      <div id="question-box">
+      <div id="question-box" class="hidden">
         <p id="question-text"></p>
         <div id="options-list"></div>
       </div>
 
-      <div id="hint-box">
+      <div id="hint-box" class="hidden">
         <p id="hint-text"></p>
       </div>
 
-      <div id="feedback-message"></div>
+      <div id="feedback-message" class="hidden"></div>
 
       <!-- Khu vực hiển thị media sau khi mở khóa scene -->
-      <div id="media-container"></div>
+      <div id="media-container" class="hidden"></div>
     </section>
 
-    <!-- Khu vực hiển thị kết bài (Epilogue - Scene 7) -->
-    <section id="epilogue-container" class="hidden">
+    <!-- Khu vực hiển thị kết bài (Epilogue - Scene 7 full-screen) -->
+    <section id="epilogue-container" class="scene-screen hidden">
       <div id="epilogue-content">
         <h2 id="epilogue-title"></h2>
         <p id="epilogue-message"></p>

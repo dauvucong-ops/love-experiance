@@ -33,6 +33,20 @@ function generateCoordinates(count) {
   });
 }
 
+// ══════════════════════════════════════════════════════════════
+// stripSceneOrdinalPrefix(name) — loại bỏ tiền tố số thứ tự cứng
+//
+// Loại bỏ các tiền tố như "Kỷ niệm 1: ", "Kỷ niệm số 2: ", "2: ",
+// "Kỷ niệm 1 - " khỏi chuỗi tiêu đề khi hiển thị lên giao diện,
+// tránh xung đột với số đếm động "KỶ NIỆM {index+1} / {total}".
+// Không làm thay đổi dữ liệu gốc trong scenesData hoặc Firestore.
+// ══════════════════════════════════════════════════════════════
+function stripSceneOrdinalPrefix(name) {
+  if (!name || typeof name !== 'string') return '';
+  const cleaned = name.replace(/^(?:kỷ\s*niệm(?:\s+số)?\s*\d*|\d+)\s*[:\-–—]\s*/i, '').trim();
+  return cleaned || name.trim();
+}
+
 class GameController {
   /**
    * @param {Array<Object>} scenesData - Mảng 7 cảnh từ data.js
@@ -156,6 +170,7 @@ class GameController {
     this.mediaContainer.innerHTML = '';
     this.journalContainer.classList.add('hidden');
     this.epilogueContainer.classList.add('hidden');
+    this.quizContainer.classList.remove('hidden');
 
     // Xoá listener cũ của #continue-btn bằng clone-replace
     const newBtn = this.continueBtn.cloneNode(true);
@@ -174,8 +189,8 @@ class GameController {
     this._resetUI();
 
     // Header luôn hiện
-    this.sceneIndicator.textContent = `Kỷ niệm ${index + 1} / ${this.scenesData.length}`;
-    this.sceneTitle.textContent = scene.sceneName;
+    this.sceneIndicator.textContent = `Kỷ niệm ${index + 1}`;
+    this.sceneTitle.textContent = stripSceneOrdinalPrefix(scene.sceneName);
 
     // ── EPILOGUE: scene không có câu hỏi ──────────────────────
     if (scene.question === null) {
@@ -222,7 +237,7 @@ class GameController {
   // ── Hiện màn epilogue ─────────────────────────────────────────
   _showEpilogue(scene) {
     this.quizContainer.classList.add('hidden');
-    this.epilogueTitle.textContent = scene.sceneName;
+    this.epilogueTitle.textContent = stripSceneOrdinalPrefix(scene.sceneName);
     this.epilogueMessage.textContent = scene.epilogueMessage || '';
     this.epilogueContainer.classList.remove('hidden');
 
@@ -401,9 +416,8 @@ class GameController {
     // Nếu currentSceneIndex vẫn hợp lệ: cập nhật header nhẹ nhàng
     if (this.currentSceneIndex < newScenesData.length) {
       const scene = newScenesData[this.currentSceneIndex];
-      this.sceneIndicator.textContent =
-        `Kỷ niệm ${this.currentSceneIndex + 1} / ${newScenesData.length}`;
-      this.sceneTitle.textContent = scene.sceneName;
+      this.sceneIndicator.textContent = `Kỷ niệm ${this.currentSceneIndex + 1}`;
+      this.sceneTitle.textContent = stripSceneOrdinalPrefix(scene.sceneName);
 
       // Cập nhật nội dung văn bản hiển thị nếu đang xem scene này
       if (scene.journalEntry && this.journalText) {
@@ -414,6 +428,9 @@ class GameController {
       }
       if (scene.hint && this.hintText) {
         this.hintText.textContent = scene.hint;
+      }
+      if (this.epilogueTitle) {
+        this.epilogueTitle.textContent = stripSceneOrdinalPrefix(scene.sceneName);
       }
       if (scene.epilogueMessage && this.epilogueMessage) {
         this.epilogueMessage.textContent = scene.epilogueMessage;
@@ -735,7 +752,7 @@ class GameController {
     // Tiêu đề modal
     const titleEl = document.getElementById('edit-scene-modal-title');
     if (titleEl) {
-      titleEl.textContent = `Chỉnh sửa: ${scene.sceneName || ('Kỷ niệm ' + (this.currentSceneIndex + 1))}`;
+      titleEl.textContent = `Chỉnh sửa: ${stripSceneOrdinalPrefix(scene.sceneName) || ('Kỷ niệm ' + (this.currentSceneIndex + 1))}`;
     }
 
     // Checkbox isEpilogue (chỉ đọc)

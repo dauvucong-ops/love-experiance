@@ -54,6 +54,8 @@ class GameController {
   constructor(scenesData) {
     this.scenesData = scenesData;
     this.currentSceneIndex = 0;
+    this.currentQuestionIndex = 0;
+    this.isSceneUnlocked = false;
     this.isEditMode = false;
 
     // ─── Tham chiếu DOM cố định ───────────────────────────────
@@ -65,6 +67,7 @@ class GameController {
     this.journalText    = document.getElementById('journal-text');
     this.continueBtn    = document.getElementById('continue-btn');
     this.questionBox    = document.getElementById('question-box');
+    this.questionProgress = document.getElementById('question-progress');
     this.questionText   = document.getElementById('question-text');
     this.optionsList    = document.getElementById('options-list');
     this.hintBox        = document.getElementById('hint-box');
@@ -164,7 +167,14 @@ class GameController {
   // _resetUI — reset trạng thái ban đầu giữa các scene
   // ══════════════════════════════════════════════════════════════
   _resetUI() {
+    this.currentQuestionIndex = 0;
+    this.isSceneUnlocked = false;
+
     // Ẩn các khối phụ
+    if (this.questionProgress) {
+      this.questionProgress.classList.add('hidden');
+      this.questionProgress.textContent = '';
+    }
     this.questionBox.classList.add('hidden');
     this.hintBox.classList.add('hidden');
     this.feedbackMsg.classList.add('hidden');
@@ -190,6 +200,8 @@ class GameController {
     if (!scene) return;
 
     this._resetUI();
+    this.currentQuestionIndex = 0;
+    this.isSceneUnlocked = false;
 
     // Header luôn hiện
     this.sceneIndicator.textContent = `Kỷ niệm ${index + 1}`;
@@ -255,13 +267,62 @@ class GameController {
   // ══════════════════════════════════════════════════════════════
   renderScene() {
     const scene = this.scenesData[this.currentSceneIndex];
+    if (!scene) return;
 
-    this.questionText.textContent = scene.question;
-    this.hintText.textContent = scene.hint || '';
+    // Chuẩn hoá mảng questions (fallback mảng 1 phần tử từ các field rời nếu chưa có questions)
+    const questions = (Array.isArray(scene.questions) && scene.questions.length > 0)
+      ? scene.questions
+      : [{
+          question:      scene.question,
+          options:       scene.options,
+          correctAnswer: scene.correctAnswer,
+          hint:          scene.hint
+        }];
+
+    const totalQuestions = questions.length;
+    // Đảm bảo currentQuestionIndex nằm trong biên an toàn
+    if (this.currentQuestionIndex >= totalQuestions) {
+      this.currentQuestionIndex = totalQuestions - 1;
+    }
+    if (this.currentQuestionIndex < 0) {
+      this.currentQuestionIndex = 0;
+    }
+
+    const currentQ = questions[this.currentQuestionIndex] || {};
+
+    // Chỉ báo tiến độ câu hỏi: ví dụ "Câu 1/3" nếu scene có nhiều hơn 1 câu hỏi
+    if (!this.questionProgress) {
+      this.questionProgress = document.getElementById('question-progress');
+      if (!this.questionProgress && this.questionBox && this.questionText) {
+        this.questionProgress = document.createElement('div');
+        this.questionProgress.id = 'question-progress';
+        this.questionProgress.className = 'question-progress hidden';
+        this.questionBox.insertBefore(this.questionProgress, this.questionText);
+      }
+    }
+
+    if (this.questionProgress) {
+      if (totalQuestions > 1) {
+        this.questionProgress.textContent = `Câu ${this.currentQuestionIndex + 1}/${totalQuestions}`;
+        this.questionProgress.classList.remove('hidden');
+      } else {
+        this.questionProgress.textContent = '';
+        this.questionProgress.classList.add('hidden');
+      }
+    }
+
+    this.questionText.textContent = currentQ.question || '';
+    this.hintText.textContent = currentQ.hint || '';
+
+    // Ẩn hint và feedback khi render câu hỏi mới
+    this.hintBox.classList.add('hidden');
+    this.feedbackMsg.classList.add('hidden');
+    this.feedbackMsg.className = 'hidden';
 
     // Render các nút lựa chọn
     this.optionsList.innerHTML = '';
-    scene.options.forEach(option => {
+    const options = Array.isArray(currentQ.options) ? currentQ.options : [];
+    options.forEach(option => {
       const btn = document.createElement('button');
       btn.className = 'option-btn';
       btn.textContent = option;
@@ -275,7 +336,19 @@ class GameController {
   // ══════════════════════════════════════════════════════════════
   checkAnswer(selectedOption, btnEl) {
     const scene = this.scenesData[this.currentSceneIndex];
-    const isCorrect = selectedOption === scene.correctAnswer;
+    if (!scene) return;
+
+    const questions = (Array.isArray(scene.questions) && scene.questions.length > 0)
+      ? scene.questions
+      : [{
+          question:      scene.question,
+          options:       scene.options,
+          correctAnswer: scene.correctAnswer,
+          hint:          scene.hint
+        }];
+
+    const currentQ = questions[this.currentQuestionIndex] || {};
+    const isCorrect = selectedOption === currentQ.correctAnswer;
 
     if (isCorrect) {
       // ── Đáp án ĐÚNG ──
@@ -287,16 +360,33 @@ class GameController {
         b.style.cursor = 'default';
       });
 
-      // Hiện phản hồi tích cực
-      this.feedbackMsg.textContent = '✓ Chính xác rồi! Hành trình tiếp tục...';
-      this.feedbackMsg.className = 'success';
-      this.feedbackMsg.classList.remove('hidden');
-
       // Ẩn hint nếu đang hiện
       this.hintBox.classList.add('hidden');
 
-      // Đợi animation xong rồi unlock
-      setTimeout(() => this.unlockNextScene(), 1200);
+      const hasNextQuestion = this.currentQuestionIndex + 1 < questions.length;
+
+      if (hasNextQuestion) {
+        // Còn câu hỏi tiếp theo trong cùng kỷ niệm
+        this.feedbackMsg.textContent = '✓ Chính xác! Câu tiếp theo...';
+        this.feedbackMsg.className = 'success';
+        this.feedbackMsg.classList.remove('hidden');
+
+        // Hiện câu hỏi kế tiếp sau 800ms
+        setTimeout(() => {
+          this.currentQuestionIndex++;
+          this.renderScene();
+        }, 800);
+      } else {
+        // Đã hoàn thành tất cả câu hỏi trong kỷ niệm này
+        this.isSceneUnlocked = true;
+
+        this.feedbackMsg.textContent = '✓ Chính xác rồi! Hành trình tiếp tục...';
+        this.feedbackMsg.className = 'success';
+        this.feedbackMsg.classList.remove('hidden');
+
+        // Đợi animation xong rồi unlock sang kỷ niệm tiếp theo
+        setTimeout(() => this.unlockNextScene(), 1200);
+      }
 
     } else {
       // ── Đáp án SAI ──
@@ -310,7 +400,7 @@ class GameController {
         btnEl.classList.remove('is-wrong');
       }, { once: true });
 
-      // Hiện hint
+      // Hiện hint của câu hỏi hiện tại
       this.hintBox.classList.remove('hidden');
 
       // Phản hồi thất bại
@@ -426,11 +516,15 @@ class GameController {
       if (scene.journalEntry && this.journalText) {
         this.journalText.textContent = scene.journalEntry;
       }
-      if (scene.question && this.questionText) {
-        this.questionText.textContent = scene.question;
+      const currentQuestions = (Array.isArray(scene.questions) && scene.questions.length > 0)
+        ? scene.questions
+        : [{ question: scene.question, hint: scene.hint }];
+      const curQ = currentQuestions[this.currentQuestionIndex] || currentQuestions[0];
+      if (curQ && curQ.question && this.questionText) {
+        this.questionText.textContent = curQ.question;
       }
-      if (scene.hint && this.hintText) {
-        this.hintText.textContent = scene.hint;
+      if (curQ && curQ.hint && this.hintText) {
+        this.hintText.textContent = curQ.hint;
       }
       if (this.epilogueTitle) {
         this.epilogueTitle.textContent = stripSceneOrdinalPrefix(scene.sceneName);
@@ -543,11 +637,11 @@ class GameController {
     // 2. Nếu đang ở màn Câu hỏi:
     if (this.questionBox && !this.questionBox.classList.contains('hidden')) {
       const nextBtn = document.querySelector('.next-scene-btn');
-      if (nextBtn) {
-        // Đã trả lời đúng và mở khoá: gọi nút next-scene-btn để sang scene kế tiếp
+      if (nextBtn && this.isSceneUnlocked) {
+        // Đã trả lời đúng toàn bộ câu hỏi và mở khoá: gọi nút next-scene-btn để sang scene kế tiếp
         nextBtn.click();
       } else {
-        // Chưa trả lời đúng: rung nhẹ cảnh báo (không cho phép skip câu hỏi)
+        // Chưa trả lời đúng hết tất cả câu hỏi: rung nhẹ cảnh báo (không cho phép skip câu hỏi)
         this._bounceLockedQuestion();
       }
       return;

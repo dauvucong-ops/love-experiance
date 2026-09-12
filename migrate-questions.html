@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Love Journey — Migrate Questions Tool</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 680px;
+      margin: 40px auto;
+      padding: 0 20px 60px;
+      background: #fffaf6;
+      color: #2e2328;
+    }
+    h1  { font-size: 1.45rem; color: #b84a5b; margin-bottom: 8px; }
+    p   { font-size: 0.92rem; color: #7d6b73; line-height: 1.6; margin: 6px 0; }
+    .note {
+      background: #fdf5f0;
+      border-left: 4px solid #b84a5b;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 0.88rem;
+      margin: 18px 0;
+      color: #5c3842;
+    }
+    button {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #b84a5b, #e58c99);
+      color: white;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      margin: 20px 0 12px;
+      box-shadow: 0 4px 15px rgba(184, 74, 91, 0.3);
+      transition: all 0.2s;
+    }
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(184, 74, 91, 0.4);
+    }
+    button:disabled { background: #b5b5b5; box-shadow: none; cursor: not-allowed; }
+    #log {
+      background: #1e1e1e;
+      color: #d4e8c2;
+      border-radius: 10px;
+      padding: 16px 18px;
+      font-size: 0.82rem;
+      font-family: 'Consolas', 'Courier New', monospace;
+      line-height: 1.7;
+      min-height: 160px;
+      max-height: 480px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-top: 16px;
+      border: 1px solid #333;
+    }
+    .ok   { color: #7dd87d; }
+    .err  { color: #ff8888; }
+    .info { color: #f0c060; }
+    .muted{ color: #888888; }
+  </style>
+</head>
+<body>
+  <h1>🛠 Migrate Questions Tool (Dùng 1 lần)</h1>
+  <p>
+    Công cụ chuyển dữ liệu các document trong collection <strong>memories</strong>
+    từ dạng câu hỏi đơn (các field rời <code>question/options/correctAnswer/hint</code>)
+    sang field mới <strong>questions</strong> (dạng mảng) để hỗ trợ nhiều câu hỏi trong 1 kỷ niệm.
+  </p>
+
+  <div class="note">
+    🛡 <strong>An toàn dữ liệu & Idempotent:</strong>
+    <br>• <strong>Không xoá</strong> các field cũ: các field cũ vẫn được giữ nguyên vẹn trên Firestore.
+    <br>• <strong>Tự động bỏ qua</strong> document đã có field <code>questions</code>: chạy nhiều lần không gây trùng hay ghi đè.
+    <br>• Dùng mã PIN từ <code>firebase-config.js</code> để khớp Security Rules.
+  </div>
+
+  <button id="migrateBtn">Bắt đầu Migrate field "questions"</button>
+
+  <div id="log">Chờ lệnh...</div>
+
+  <!-- Load cấu hình Firebase & PIN -->
+  <script src="./firebase-config.js"></script>
+
+  <!-- Inline module: Firebase + logic migration -->
+  <script type="module">
+    import { initializeApp }
+      from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js';
+    import {
+      getFirestore,
+      collection, query, orderBy, getDocs, doc, setDoc
+    } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js';
+
+    // ── Khởi tạo Firebase ──────────────────────────────────────
+    const app = initializeApp(window.FIREBASE_CONFIG);
+    const db  = getFirestore(app);
+
+    // ── Log helper ──────────────────────────────────────────────
+    const logEl = document.getElementById('log');
+    function log(msg, type = '') {
+      const span = document.createElement('span');
+      span.className = type;
+      span.textContent = msg + '\n';
+      logEl.appendChild(span);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    logEl.textContent = '';
+    log('Firebase đã khởi tạo. Sẵn sàng.', 'ok');
+
+    const PIN = window.APP_CONFIG?.adminPin ? String(window.APP_CONFIG.adminPin).trim() : '20052008';
+
+    // ── Nút migration ────────────────────────────────────────────
+    document.getElementById('migrateBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('migrateBtn');
+      btn.disabled = true;
+      log('\n========================================', 'muted');
+      log('Bắt đầu kiểm tra và migrate dữ liệu...', 'info');
+      log(`Mã PIN xác thực: ${PIN}`, 'muted');
+
+      try {
+        const q = query(collection(db, 'memories'), orderBy('order'));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          log('❌ Collection "memories" trống. Không có document nào.', 'err');
+          btn.disabled = false;
+          return;
+        }
+
+        log(`Tìm thấy tổng cộng ${snapshot.docs.length} documents trong collection "memories".\n`, 'info');
+
+        let countMigrated = 0;
+        let countSkipped = 0;
+        let countEpilogue = 0;
+        let countErrors = 0;
+
+        for (const docSnap of snapshot.docs) {
+          const d = docSnap.data();
+          const docId = docSnap.id;
+          const name = d.sceneName || `Order ${d.order}`;
+          const isEpilogue = Boolean(d.isEpilogue || d.question === null);
+
+          // 1. Trường hợp Epilogue:
+          if (isEpilogue) {
+            if (Array.isArray(d.questions)) {
+              log(`[${docId}] ${name} (Epilogue) -> Đã có questions: [] (BỎ QUA)`, 'muted');
+              countSkipped++;
+            } else {
+              try {
+                await setDoc(doc(db, 'memories', docId), {
+                  questions: [],
+                  pin: PIN
+                }, { merge: true });
+                log(`[${docId}] ${name} (Epilogue) -> Đã cập nhật questions: []`, 'ok');
+                countEpilogue++;
+              } catch (err) {
+                log(`[${docId}] ${name} (Epilogue) -> LỖI: ${err.message}`, 'err');
+                countErrors++;
+              }
+            }
+            continue;
+          }
+
+          // 2. Trường hợp scene thường ĐÃ CÓ field questions hợp lệ (mảng >= 1):
+          if (Array.isArray(d.questions) && d.questions.length >= 1) {
+            log(`[${docId}] ${name} -> ĐÃ CÓ ${d.questions.length} câu hỏi trong mảng "questions" (BỎ QUA, không ghi đè)`, 'info');
+            countSkipped++;
+            continue;
+          }
+
+          // 3. Trường hợp scene thường CHƯA CÓ field questions (hoặc rỗng):
+          if (d.question && typeof d.question === 'string' && d.question.trim().length > 0) {
+            const newQuestions = [{
+              question:      d.question,
+              options:       Array.isArray(d.options) ? d.options : [],
+              correctAnswer: d.correctAnswer || '',
+              hint:          d.hint || ''
+            }];
+
+            try {
+              await setDoc(doc(db, 'memories', docId), {
+                questions: newQuestions,
+                pin: PIN
+              }, { merge: true });
+
+              log(`[${docId}] ${name} -> MIGRATE THÀNH CÔNG (tạo mảng questions gồm 1 câu hỏi từ field cũ)`, 'ok');
+              countMigrated++;
+            } catch (err) {
+              log(`[${docId}] ${name} -> LỖI: ${err.message}`, 'err');
+              countErrors++;
+            }
+          } else {
+            log(`[${docId}] ${name} -> Không có nội dung question dạng chuỗi để tạo questions. Bỏ qua.`, 'err');
+            countSkipped++;
+          }
+        }
+
+        log('\n========================================', 'muted');
+        log('KẾT QUẢ MIGRATION:', 'info');
+        log(`- Tổng số document: ${snapshot.docs.length}`, 'info');
+        log(`- Đã migrate mới:    ${countMigrated} scene(s)`, countMigrated > 0 ? 'ok' : 'info');
+        log(`- Epilogue xử lý:    ${countEpilogue} scene(s)`, 'ok');
+        log(`- Bỏ qua (đã có):    ${countSkipped} scene(s)`, 'muted');
+        if (countErrors > 0) {
+          log(`- Thất bại (lỗi):    ${countErrors} scene(s)`, 'err');
+        } else {
+          log('\n🎉 Quá trình hoàn tất an toàn! Không có lỗi.', 'ok');
+          log('Bạn có thể đóng trang này hoặc xoá file sau khi xong.', 'info');
+        }
+
+      } catch (err) {
+        log('\n❌ Lỗi truy vấn Firestore: ' + err.message, 'err');
+        if (err.code === 'permission-denied') {
+          log('→ Kiểm tra Firestore Security Rules (mã PIN không khớp).', 'err');
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

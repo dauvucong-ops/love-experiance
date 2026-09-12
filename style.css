@@ -321,6 +321,20 @@ body {
   overflow-y: auto;
 }
 
+.question-progress {
+  align-self: center;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--primary-color);
+  background: rgba(184, 74, 91, 0.08);
+  border: 1px solid rgba(184, 74, 91, 0.2);
+  border-radius: var(--radius-pill);
+  padding: 3px 12px;
+  margin-bottom: 2px;
+}
+
 #question-text {
   font-size: 1.15rem;
   font-weight: 700;

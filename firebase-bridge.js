@@ -49,23 +49,51 @@ function detectMediaType(url) {
 function docToScene(doc) {
   const d = doc.data();
   const mediaType = detectMediaType(d.mediaUrl);
+  const isEpilogue = Boolean(d.isEpilogue);
+
+  // Xử lý mảng questions:
+  // 1. Epilogue (isEpilogue = true): questions = [] (mảng rỗng)
+  // 2. Document có field "questions" (mảng >= 1): dùng trực tiếp mảng đó
+  // 3. Document dữ liệu cũ (chưa có questions): tự động dựng mảng 1 phần tử
+  let questions = [];
+  if (!isEpilogue) {
+    if (Array.isArray(d.questions) && d.questions.length >= 1) {
+      questions = d.questions;
+    } else {
+      questions = [{
+        question:      d.question      ?? null,
+        options:       d.options       ?? null,
+        correctAnswer: d.correctAnswer ?? null,
+        hint:          d.hint          ?? null
+      }];
+    }
+  }
+
+  // Giữ nguyên tương thích ngược: các field rời cũ (question, options, correctAnswer, hint)
+  // lấy từ phần tử đầu tiên questions[0] (nếu có) để main.js hiện tại chạy bình thường
+  const firstQ = questions[0] || null;
+  const question      = isEpilogue ? null : (firstQ?.question      ?? d.question      ?? null);
+  const options       = isEpilogue ? null : (firstQ?.options       ?? d.options       ?? null);
+  const correctAnswer = isEpilogue ? null : (firstQ?.correctAnswer ?? d.correctAnswer ?? null);
+  const hint          = isEpilogue ? null : (firstQ?.hint          ?? d.hint          ?? null);
 
   return {
     firestoreId:     doc.id,                          // dùng cho ghi/sửa sau này
     id:              d.order,
-    isEpilogue:      Boolean(d.isEpilogue),
-    sceneName:       d.sceneName || (d.isEpilogue
+    isEpilogue:      isEpilogue,
+    sceneName:       d.sceneName || (isEpilogue
                        ? 'Hồi kết'
                        : `Kỷ niệm ${d.order}`),
     pathCoordinate:  null,                            // sẽ được tính bởi generateCoordinates()
     journalEntry:    d.journalEntry    ?? null,
-    question:        d.isEpilogue ? null : (d.question     ?? null),
-    options:         d.isEpilogue ? null : (d.options      ?? null),
-    correctAnswer:   d.isEpilogue ? null : (d.correctAnswer ?? null),
-    hint:            d.isEpilogue ? null : (d.hint          ?? null),
+    questions:       questions,                       // mảng câu hỏi (hỗ trợ nhiều câu hỏi)
+    question:        question,                        // tương thích ngược cho main.js
+    options:         options,                         // tương thích ngược cho main.js
+    correctAnswer:   correctAnswer,                   // tương thích ngược cho main.js
+    hint:            hint,                            // tương thích ngược cho main.js
     mediaUrl:        d.mediaUrl || null,
     mediaAfterUnlock: { type: mediaType, src: d.mediaUrl || null },
-    epilogueMessage: d.isEpilogue ? (d.epilogueMessage ?? '') : null
+    epilogueMessage: isEpilogue ? (d.epilogueMessage ?? '') : null
     // Trường `pin` trong Firestore bị bỏ qua ở đây
   };
 }

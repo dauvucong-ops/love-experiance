@@ -1319,6 +1319,109 @@ body.edit-mode-active .profile-view-edit-btn {
   display: inline-flex !important;
 }
 
+/* Tags/Chips cho 4 trường danh sách hồ sơ (Phase 3 update) */
+.tag-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tag-input-row input[type="text"] {
+  flex: 1;
+}
+
+.tag-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 15px;
+  border-radius: var(--radius-md);
+  background: rgba(184, 74, 91, 0.08);
+  color: var(--primary-color);
+  border: 1.5px solid rgba(184, 74, 91, 0.25);
+  font-family: var(--font-sans);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: var(--transition-smooth);
+}
+
+.tag-add-btn:hover {
+  background: var(--primary-color);
+  color: #ffffff;
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(184, 74, 91, 0.2);
+}
+
+.tag-add-btn:active {
+  transform: scale(0.96);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.tag-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(184, 74, 91, 0.08);
+  color: var(--primary-color);
+  border: 1px solid rgba(229, 140, 153, 0.45);
+  border-radius: var(--radius-pill);
+  padding: 3px 8px 3px 11px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.35;
+  animation: fadeIn 0.2s ease;
+}
+
+.tag-item-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.tag-item-remove:hover {
+  color: var(--error-color);
+  transform: scale(1.2);
+}
+
+/* Tags hiển thị trong Modal Xem chi tiết */
+.profile-tags-view {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.profile-tag-view {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(184, 74, 91, 0.07);
+  color: var(--primary-color);
+  border: 1px solid rgba(229, 140, 153, 0.4);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
 /* --- Bottom Navigation Bar --- */
 .bottom-nav {
   position: fixed;

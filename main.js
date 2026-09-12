@@ -1077,12 +1077,22 @@ class GameController {
     this.profileEditName      = document.getElementById('profile-edit-name');
     this.profileEditAvatarUrl = document.getElementById('profile-edit-avatar-url');
     this.profileEditBirthday  = document.getElementById('profile-edit-birthday');
-    this.profileEditPersonality = document.getElementById('profile-edit-personality');
-    this.profileEditHobbies   = document.getElementById('profile-edit-hobbies');
-    this.profileEditFood      = document.getElementById('profile-edit-food');
-    this.profileEditDislikes  = document.getElementById('profile-edit-dislikes');
     this.profileEditNote      = document.getElementById('profile-edit-note');
     this.profileEditPin       = document.getElementById('profile-edit-pin');
+
+    // Cấu hình 4 trường danh sách dạng tags (Phase 3 update)
+    this.profileListFields = [
+      { key: 'personality', idPrefix: 'personality' },
+      { key: 'hobbies', idPrefix: 'hobbies' },
+      { key: 'favoriteFood', idPrefix: 'food' },
+      { key: 'dislikes', idPrefix: 'dislikes' }
+    ];
+    this.editingProfileTags = {
+      personality: [],
+      hobbies: [],
+      favoriteFood: [],
+      dislikes: []
+    };
 
     // 1. Lắng nghe real-time event từ Firestore Bridge
     window.addEventListener('lj:profilesUpdated', (e) => {
@@ -1158,6 +1168,28 @@ class GameController {
       });
     }
 
+    // 5. Sự kiện thêm tag cho 4 trường danh sách (nút Thêm & phím Enter)
+    this.profileListFields.forEach(({ key, idPrefix }) => {
+      const addBtn = document.getElementById(`profile-edit-${idPrefix}-add-btn`);
+      const input = document.getElementById(`profile-edit-${idPrefix}-input`);
+
+      if (addBtn) {
+        addBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.addEditProfileTag(key, idPrefix);
+        });
+      }
+
+      if (input) {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.addEditProfileTag(key, idPrefix);
+          }
+        });
+      }
+    });
+
     // Đóng modal khi nhấn Escape
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
@@ -1171,6 +1203,74 @@ class GameController {
 
     // Render ban đầu với placeholder
     this.renderProfiles();
+  }
+
+  /**
+   * Thêm tag vào danh sách đang chỉnh sửa của field
+   * @param {'personality' | 'hobbies' | 'favoriteFood' | 'dislikes'} key 
+   * @param {string} idPrefix 
+   */
+  addEditProfileTag(key, idPrefix) {
+    const input = document.getElementById(`profile-edit-${idPrefix}-input`);
+    if (!input) return;
+    const val = input.value.trim();
+    if (!val) return; // Chặn thêm item rỗng
+
+    if (!this.editingProfileTags[key]) {
+      this.editingProfileTags[key] = [];
+    }
+    this.editingProfileTags[key].push(val);
+    input.value = '';
+    this.renderEditProfileTags(key, idPrefix);
+    input.focus();
+  }
+
+  /**
+   * Xoá tag tại vị trí index khỏi field
+   * @param {'personality' | 'hobbies' | 'favoriteFood' | 'dislikes'} key 
+   * @param {string} idPrefix 
+   * @param {number} index 
+   */
+  removeEditProfileTag(key, idPrefix, index) {
+    if (!this.editingProfileTags[key]) return;
+    this.editingProfileTags[key].splice(index, 1);
+    this.renderEditProfileTags(key, idPrefix);
+  }
+
+  /**
+   * Render các tag/chip đang có của 1 field trong modal chỉnh sửa
+   * @param {'personality' | 'hobbies' | 'favoriteFood' | 'dislikes'} key 
+   * @param {string} idPrefix 
+   */
+  renderEditProfileTags(key, idPrefix) {
+    const container = document.getElementById(`profile-edit-${idPrefix}-tags`);
+    if (!container) return;
+    container.innerHTML = '';
+
+    const items = this.editingProfileTags[key] || [];
+    items.forEach((item, index) => {
+      const tagEl = document.createElement('span');
+      tagEl.className = 'tag-item';
+
+      const textEl = document.createElement('span');
+      textEl.className = 'tag-item-text';
+      textEl.textContent = item;
+      tagEl.appendChild(textEl);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'tag-item-remove';
+      removeBtn.setAttribute('aria-label', `Xoá ${item}`);
+      removeBtn.innerHTML = '&times;';
+      removeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.removeEditProfileTag(key, idPrefix, index);
+      });
+      tagEl.appendChild(removeBtn);
+
+      container.appendChild(tagEl);
+    });
   }
 
   /**
@@ -1275,22 +1375,38 @@ class GameController {
       }
     }
 
-    // Helper render các trường chi tiết (hiển thị 'Chưa cập nhật' in nghiêng nếu rỗng)
-    const setFieldValue = (el, val) => {
+    // Helper render các trường chi tiết dạng danh sách tags (hiển thị 'Chưa cập nhật' in nghiêng nếu rỗng)
+    const setListFieldValue = (el, rawVal) => {
       if (!el) return;
-      if (val && String(val).trim()) {
-        el.textContent = String(val).trim();
-        el.classList.remove('is-empty');
+      let items = [];
+      if (Array.isArray(rawVal)) {
+        items = rawVal.map(item => String(item).trim()).filter(Boolean);
+      } else if (typeof rawVal === 'string' && rawVal.trim()) {
+        items = [rawVal.trim()];
+      }
+
+      if (items.length > 0) {
+        el.className = 'profile-info-val';
+        el.innerHTML = '';
+        const tagsWrapper = document.createElement('div');
+        tagsWrapper.className = 'profile-tags-view';
+        items.forEach(item => {
+          const chip = document.createElement('span');
+          chip.className = 'profile-tag-view';
+          chip.textContent = item;
+          tagsWrapper.appendChild(chip);
+        });
+        el.appendChild(tagsWrapper);
       } else {
+        el.className = 'profile-info-val is-empty';
         el.textContent = 'Chưa cập nhật';
-        el.classList.add('is-empty');
       }
     };
 
-    setFieldValue(this.profileViewPersonality, p.personality);
-    setFieldValue(this.profileViewHobbies, p.hobbies);
-    setFieldValue(this.profileViewFood, p.favoriteFood);
-    setFieldValue(this.profileViewDislikes, p.dislikes);
+    setListFieldValue(this.profileViewPersonality, p.personality);
+    setListFieldValue(this.profileViewHobbies, p.hobbies);
+    setListFieldValue(this.profileViewFood, p.favoriteFood);
+    setListFieldValue(this.profileViewDislikes, p.dislikes);
 
     // Lời nhắn gửi (đặc biệt)
     if (this.profileViewNote) {
@@ -1329,14 +1445,28 @@ class GameController {
     if (this.profileEditName) this.profileEditName.value = p.name || (p.name === '' ? '' : (p.name ? p.name : defaultName));
     if (this.profileEditAvatarUrl) this.profileEditAvatarUrl.value = p.avatarUrl || '';
     if (this.profileEditBirthday) this.profileEditBirthday.value = p.birthday || '';
-    if (this.profileEditPersonality) this.profileEditPersonality.value = p.personality || '';
-    if (this.profileEditHobbies) this.profileEditHobbies.value = p.hobbies || '';
-    if (this.profileEditFood) this.profileEditFood.value = p.favoriteFood || '';
-    if (this.profileEditDislikes) this.profileEditDislikes.value = p.dislikes || '';
     if (this.profileEditNote) this.profileEditNote.value = p.noteForOther || '';
     if (this.profileEditPin) {
       this.profileEditPin.value = window.APP_CONFIG?.adminPin ? String(window.APP_CONFIG.adminPin).trim() : '';
     }
+
+    // Khởi tạo các tag cho 4 trường danh sách (tự bọc thành mảng 1 phần tử khi gặp string)
+    this.editingProfileTags = {};
+    this.profileListFields.forEach(({ key, idPrefix }) => {
+      const rawVal = p[key];
+      let arr = [];
+      if (Array.isArray(rawVal)) {
+        arr = rawVal.map(item => String(item).trim()).filter(Boolean);
+      } else if (typeof rawVal === 'string' && rawVal.trim()) {
+        arr = [rawVal.trim()];
+      }
+      this.editingProfileTags[key] = arr;
+
+      const input = document.getElementById(`profile-edit-${idPrefix}-input`);
+      if (input) input.value = '';
+
+      this.renderEditProfileTags(key, idPrefix);
+    });
 
     this.hideProfileEditError();
     this.profileEditModal.classList.remove('hidden');
@@ -1410,14 +1540,25 @@ class GameController {
       return;
     }
 
+    // Thu hoạch nốt nội dung đang gõ dở trong các ô input tag (nếu có)
+    this.profileListFields.forEach(({ key, idPrefix }) => {
+      const input = document.getElementById(`profile-edit-${idPrefix}-input`);
+      if (input && input.value.trim()) {
+        const val = input.value.trim();
+        if (!this.editingProfileTags[key]) this.editingProfileTags[key] = [];
+        this.editingProfileTags[key].push(val);
+        input.value = '';
+      }
+    });
+
     const payload = {
       name: name,
       avatarUrl: avatarUrl || '',
       birthday: this.profileEditBirthday ? this.profileEditBirthday.value.trim() : '',
-      personality: this.profileEditPersonality ? this.profileEditPersonality.value.trim() : '',
-      hobbies: this.profileEditHobbies ? this.profileEditHobbies.value.trim() : '',
-      favoriteFood: this.profileEditFood ? this.profileEditFood.value.trim() : '',
-      dislikes: this.profileEditDislikes ? this.profileEditDislikes.value.trim() : '',
+      personality: this.editingProfileTags.personality || [],
+      hobbies: this.editingProfileTags.hobbies || [],
+      favoriteFood: this.editingProfileTags.favoriteFood || [],
+      dislikes: this.editingProfileTags.dislikes || [],
       noteForOther: this.profileEditNote ? this.profileEditNote.value.trim() : '',
       pin: enteredPin,
       updatedAt: Date.now()

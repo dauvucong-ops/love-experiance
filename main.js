@@ -88,6 +88,9 @@ class GameController {
     // Khởi tạo chế độ chỉnh sửa & PIN modal
     this.initEditMode();
 
+    // Khởi tạo cử chỉ vuốt chuyển cảnh (Swipe Navigation - Phase 2)
+    this.initSwipeNavigation();
+
     // Đăng ký GSAP MotionPathPlugin
     if (typeof gsap !== 'undefined' && typeof MotionPathPlugin !== 'undefined') {
       gsap.registerPlugin(MotionPathPlugin);
@@ -439,6 +442,135 @@ class GameController {
       // Scene hiện tại bị xoá khỏi Firestore → về scene cuối cùng còn lại
       this.loadScene(newScenesData.length - 1);
     }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // ĐIỀU HƯỚNG BẰNG CỬ CHỈ VUỐT DỌC (SWIPE NAVIGATION - Phase 2)
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * Khởi tạo bắt sự kiện touch trên container để điều hướng vuốt
+   */
+  initSwipeNavigation() {
+    const container = document.querySelector('.scene-container');
+    if (!container) return;
+
+    let startX = 0;
+    let startY = 0;
+    let startTime = 0;
+
+    container.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+      startTime = Date.now();
+    }, { passive: true });
+
+    container.addEventListener('touchend', (e) => {
+      if (e.changedTouches.length !== 1) return;
+
+      // 1. Không bắt cử chỉ vuốt khi đang mở bất kỳ modal nào (PIN, Sửa, Thêm)
+      const isAnyModalOpen =
+        (this.pinModal && !this.pinModal.classList.contains('hidden')) ||
+        (this.editSceneModal && !this.editSceneModal.classList.contains('hidden')) ||
+        (this.addSceneModal && !this.addSceneModal.classList.contains('hidden'));
+      if (isAnyModalOpen) return;
+
+      // 2. Không bắt cử chỉ vuốt khi tương tác với cụm nút admin, form controls
+      const target = e.target;
+      if (target.closest('#edit-controls-container, input, textarea, select')) return;
+
+      const touch = e.changedTouches[0];
+      const deltaX = startX - touch.clientX;
+      const deltaY = startY - touch.clientY;
+      const duration = Date.now() - startTime;
+
+      // 3. Tiêu chí vuốt LÊN:
+      //    - Quãng đường vuốt lên >= 60px
+      //    - Định hướng chủ yếu theo phương dọc (deltaY > 1.4 * |deltaX|)
+      //    - Thao tác dứt khoát (< 650ms) để không nhầm với giữ/chạm chậm
+      const isSwipeUp = deltaY > 60 && Math.abs(deltaY) > Math.abs(deltaX) * 1.4 && duration < 650;
+      if (!isSwipeUp) return;
+
+      // 4. Đảm bảo không xung đột cuộn tự nhiên:
+      //    Nếu phần tử chứa văn bản dài và chưa được cuộn tới đáy,
+      //    để người dùng cuộn đọc hết trước, không kích hoạt chuyển cảnh sớm.
+      if (!this._isScrolledToBottom(target)) return;
+
+      this._handleSwipeUp();
+    }, { passive: true });
+  }
+
+  /**
+   * Kiểm tra xem phần tử (hoặc các cha scrollable của nó) đã cuộn tới sát đáy chưa
+   * @param {HTMLElement} target
+   * @returns {boolean}
+   */
+  _isScrolledToBottom(target) {
+    let el = target;
+    while (el && el !== document.body && el !== document.documentElement) {
+      const style = window.getComputedStyle(el);
+      const overflowY = style.overflowY;
+      if (overflowY === 'auto' || overflowY === 'scroll') {
+        // Dung sai 10px để tính việc đã cuộn tới đáy hay chưa
+        if (el.scrollHeight - el.clientHeight > 10) {
+          const distanceToBottom = el.scrollHeight - el.clientHeight - el.scrollTop;
+          if (distanceToBottom > 10) {
+            return false; // Vẫn còn nội dung bên dưới, ưu tiên cuộn tự nhiên
+          }
+        }
+      }
+      el = el.parentElement;
+    }
+    return true;
+  }
+
+  /**
+   * Xử lý chuyển cảnh khi người dùng vuốt LÊN
+   */
+  _handleSwipeUp() {
+    // 1. Nếu đang ở màn Nhật ký (chưa sang câu hỏi):
+    //    Gọi lại đúng nút #continue-btn để thực thi chung 1 luồng animation và render
+    if (this.journalContainer && !this.journalContainer.classList.contains('hidden')) {
+      if (this.journalContainer.classList.contains('fade-out')) return; // Đang chuyển dở
+      if (this.continueBtn) {
+        this.continueBtn.click();
+      }
+      return;
+    }
+
+    // 2. Nếu đang ở màn Câu hỏi:
+    if (this.questionBox && !this.questionBox.classList.contains('hidden')) {
+      const nextBtn = document.querySelector('.next-scene-btn');
+      if (nextBtn) {
+        // Đã trả lời đúng và mở khoá: gọi nút next-scene-btn để sang scene kế tiếp
+        nextBtn.click();
+      } else {
+        // Chưa trả lời đúng: rung nhẹ cảnh báo (không cho phép skip câu hỏi)
+        this._bounceLockedQuestion();
+      }
+      return;
+    }
+
+    // 3. Trường hợp màn hình đang có nút .next-scene-btn
+    const nextBtn = document.querySelector('.next-scene-btn');
+    if (nextBtn) {
+      nextBtn.click();
+    }
+  }
+
+  /**
+   * Rung nhẹ (bounce) câu hỏi báo hiệu chưa thể vuốt chuyển tiếp khi chưa trả lời đúng
+   */
+  _bounceLockedQuestion() {
+    if (!this.questionBox) return;
+    this.questionBox.classList.remove('swipe-locked-bounce');
+    void this.questionBox.offsetWidth; // Trigger reflow để khởi động lại animation
+    this.questionBox.classList.add('swipe-locked-bounce');
+    this.questionBox.addEventListener('animationend', () => {
+      this.questionBox.classList.remove('swipe-locked-bounce');
+    }, { once: true });
   }
 
   // ══════════════════════════════════════════════════════════════

@@ -195,35 +195,22 @@
           <textarea id="add-journal-entry" rows="3" placeholder="Nhập đoạn hồi tưởng cảm xúc trước khi hiện câu hỏi..."></textarea>
         </div>
 
-        <!-- Câu hỏi trắc nghiệm -->
+        <!-- Danh sách các câu hỏi trắc nghiệm (nhiều câu hỏi) -->
         <div class="form-group">
-          <label for="add-question">Câu hỏi trắc nghiệm <span class="req">*</span></label>
-          <input type="text" id="add-question" placeholder="Nhập câu hỏi trắc nghiệm..." />
-        </div>
-
-        <!-- 4 Lựa chọn -->
-        <div class="form-group">
-          <label>4 Lựa chọn trắc nghiệm <span class="req">*</span></label>
-          <div class="options-inputs-grid">
-            <input type="text" id="add-option-0" class="edit-option-input" placeholder="Lựa chọn A..." />
-            <input type="text" id="add-option-1" class="edit-option-input" placeholder="Lựa chọn B..." />
-            <input type="text" id="add-option-2" class="edit-option-input" placeholder="Lựa chọn C..." />
-            <input type="text" id="add-option-3" class="edit-option-input" placeholder="Lựa chọn D..." />
+          <div class="questions-section-header">
+            <label class="section-heading-label">Danh sách câu hỏi trắc nghiệm <span class="req">*</span></label>
+            <span id="add-questions-count" class="questions-count-badge">1 câu</span>
           </div>
-        </div>
-
-        <!-- Đáp án đúng -->
-        <div class="form-group">
-          <label for="add-correct-answer">Đáp án đúng <span class="req">*</span></label>
-          <select id="add-correct-answer">
-            <option value="">-- Chọn đáp án đúng từ 4 lựa chọn trên --</option>
-          </select>
-        </div>
-
-        <!-- Gợi ý -->
-        <div class="form-group">
-          <label for="add-hint">Gợi ý khi trả lời sai <span class="req">*</span></label>
-          <input type="text" id="add-hint" placeholder="Nhập gợi ý khi trả lời sai..." />
+          <div id="add-questions-container" class="questions-cards-container">
+            <!-- Danh sách câu hỏi render động bởi main.js -->
+          </div>
+          <button type="button" id="add-add-question-btn" class="btn-add-question">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>+ Thêm câu hỏi</span>
+          </button>
         </div>
 
         <!-- Link media -->

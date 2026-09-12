@@ -935,44 +935,50 @@ class GameController {
   }
 
   /**
-   * Thu thập dữ liệu đang gõ dở từ các thẻ câu hỏi trong DOM vào this.editingQuestions
+   * Thu thập dữ liệu đang gõ dở từ các thẻ câu hỏi trong DOM vào mảng target (dùng chung cho cả 2 modal)
+   * @param {HTMLElement} container
+   * @param {Array<Object>} targetArray
    */
-  _harvestEditingQuestions() {
-    if (!this.editQuestionsContainer) return;
-    const cards = this.editQuestionsContainer.querySelectorAll('.edit-question-card');
+  _harvestQuestions(container, targetArray) {
+    if (!container || !targetArray) return;
+    const cards = container.querySelectorAll('.edit-question-card');
     cards.forEach((card, idx) => {
-      if (!this.editingQuestions[idx]) {
-        this.editingQuestions[idx] = { question: '', options: ['', '', '', ''], correctAnswer: '', hint: '' };
+      if (!targetArray[idx]) {
+        targetArray[idx] = { question: '', options: ['', '', '', ''], correctAnswer: '', hint: '' };
       }
       const qInput = card.querySelector('.edit-q-input-question');
       const optInputs = card.querySelectorAll('.edit-q-option');
       const correctSelect = card.querySelector('.edit-q-correct-select');
       const hintInput = card.querySelector('.edit-q-input-hint');
 
-      if (qInput) this.editingQuestions[idx].question = qInput.value;
+      if (qInput) targetArray[idx].question = qInput.value;
       if (optInputs) {
-        this.editingQuestions[idx].options = Array.from(optInputs).map(inp => inp.value);
+        targetArray[idx].options = Array.from(optInputs).map(inp => inp.value);
       }
-      if (correctSelect) this.editingQuestions[idx].correctAnswer = correctSelect.value;
-      if (hintInput) this.editingQuestions[idx].hint = hintInput.value;
+      if (correctSelect) targetArray[idx].correctAnswer = correctSelect.value;
+      if (hintInput) targetArray[idx].hint = hintInput.value;
     });
   }
 
   /**
-   * Render toàn bộ danh sách các thẻ câu hỏi trong this.editingQuestions vào DOM
+   * Render danh sách các thẻ câu hỏi vào container chỉ định (dùng chung cho cả 2 modal)
+   * @param {HTMLElement} container
+   * @param {Array<Object>} questionsArray
+   * @param {HTMLElement|null} countBadgeEl
+   * @param {Function} onUpdate
    */
-  renderEditingQuestions() {
-    if (!this.editQuestionsContainer) return;
-    this.editQuestionsContainer.innerHTML = '';
+  _renderQuestionCards(container, questionsArray, countBadgeEl, onUpdate) {
+    if (!container) return;
+    container.innerHTML = '';
 
-    const total = this.editingQuestions.length;
-    if (this.editQuestionsCount) {
-      this.editQuestionsCount.textContent = `${total} câu`;
+    const total = questionsArray.length;
+    if (countBadgeEl) {
+      countBadgeEl.textContent = `${total} câu`;
     }
 
     const letters = ['A', 'B', 'C', 'D'];
 
-    this.editingQuestions.forEach((q, idx) => {
+    questionsArray.forEach((q, idx) => {
       const card = document.createElement('div');
       card.className = 'edit-question-card';
       card.dataset.questionIndex = idx;
@@ -996,7 +1002,13 @@ class GameController {
       btnUp.title = 'Di chuyển câu hỏi này lên trên';
       btnUp.innerHTML = '▲';
       btnUp.disabled = idx === 0;
-      btnUp.addEventListener('click', () => this.moveEditingQuestion(idx, -1));
+      btnUp.addEventListener('click', () => {
+        this._harvestQuestions(container, questionsArray);
+        const temp = questionsArray[idx];
+        questionsArray[idx] = questionsArray[idx - 1];
+        questionsArray[idx - 1] = temp;
+        onUpdate();
+      });
       actions.appendChild(btnUp);
 
       // Nút Di chuyển Xuống
@@ -1006,7 +1018,13 @@ class GameController {
       btnDown.title = 'Di chuyển câu hỏi này xuống dưới';
       btnDown.innerHTML = '▼';
       btnDown.disabled = idx === total - 1;
-      btnDown.addEventListener('click', () => this.moveEditingQuestion(idx, 1));
+      btnDown.addEventListener('click', () => {
+        this._harvestQuestions(container, questionsArray);
+        const temp = questionsArray[idx];
+        questionsArray[idx] = questionsArray[idx + 1];
+        questionsArray[idx + 1] = temp;
+        onUpdate();
+      });
       actions.appendChild(btnDown);
 
       // Nút Xoá
@@ -1020,7 +1038,17 @@ class GameController {
           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
         </svg>
       `;
-      btnDelete.addEventListener('click', () => this.deleteEditingQuestion(idx));
+      btnDelete.addEventListener('click', () => {
+        this._harvestQuestions(container, questionsArray);
+        if (questionsArray.length <= 1) {
+          alert('Mỗi kỷ niệm cần tối thiểu 1 câu hỏi, không thể xoá hết.');
+          return;
+        }
+        if (confirm(`Bạn có chắc chắn muốn xoá Câu hỏi #${idx + 1}?`)) {
+          questionsArray.splice(idx, 1);
+          onUpdate();
+        }
+      });
       actions.appendChild(btnDelete);
 
       header.appendChild(actions);
@@ -1111,26 +1139,29 @@ class GameController {
       hintGroup.appendChild(hintInput);
       card.appendChild(hintGroup);
 
-      this.editQuestionsContainer.appendChild(card);
+      container.appendChild(card);
     });
   }
 
   /**
-   * Thêm 1 câu hỏi trống mới vào danh sách
+   * Thêm 1 câu hỏi trống mới vào mảng và re-render (dùng chung cho cả 2 modal)
+   * @param {HTMLElement} container
+   * @param {Array<Object>} questionsArray
+   * @param {Function} onUpdate
    */
-  addEditingQuestion() {
-    this._harvestEditingQuestions();
-    this.editingQuestions.push({
+  _addQuestion(container, questionsArray, onUpdate) {
+    this._harvestQuestions(container, questionsArray);
+    questionsArray.push({
       question: '',
       options: ['', '', '', ''],
       correctAnswer: '',
       hint: ''
     });
-    this.renderEditingQuestions();
+    onUpdate();
 
     setTimeout(() => {
-      if (!this.editQuestionsContainer) return;
-      const cards = this.editQuestionsContainer.querySelectorAll('.edit-question-card');
+      if (!container) return;
+      const cards = container.querySelectorAll('.edit-question-card');
       const lastCard = cards[cards.length - 1];
       if (lastCard) {
         lastCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1141,42 +1172,14 @@ class GameController {
   }
 
   /**
-   * Đổi vị trí câu hỏi trong mảng (lên hoặc xuống)
+   * Cuộn và focus vào trường bị lỗi trong thẻ câu hỏi cụ thể (dùng chung cho cả 2 modal)
+   * @param {HTMLElement} container
+   * @param {number} questionIdx
+   * @param {string} fieldType
    */
-  moveEditingQuestion(index, direction) {
-    this._harvestEditingQuestions();
-    const target = index + direction;
-    if (target < 0 || target >= this.editingQuestions.length) return;
-
-    const temp = this.editingQuestions[index];
-    this.editingQuestions[index] = this.editingQuestions[target];
-    this.editingQuestions[target] = temp;
-
-    this.renderEditingQuestions();
-  }
-
-  /**
-   * Xoá một câu hỏi khỏi danh sách
-   */
-  deleteEditingQuestion(index) {
-    this._harvestEditingQuestions();
-    if (this.editingQuestions.length <= 1) {
-      alert('Mỗi kỷ niệm cần tối thiểu 1 câu hỏi, không thể xoá hết.');
-      return;
-    }
-
-    if (confirm(`Bạn có chắc chắn muốn xoá Câu hỏi #${index + 1}?`)) {
-      this.editingQuestions.splice(index, 1);
-      this.renderEditingQuestions();
-    }
-  }
-
-  /**
-   * Cuộn và focus vào trường bị lỗi trong thẻ câu hỏi cụ thể
-   */
-  _focusQuestionField(questionIdx, fieldType) {
-    if (!this.editQuestionsContainer) return;
-    const cards = this.editQuestionsContainer.querySelectorAll('.edit-question-card');
+  _focusQuestionField(container, questionIdx, fieldType) {
+    if (!container) return;
+    const cards = container.querySelectorAll('.edit-question-card');
     const card = cards[questionIdx];
     if (!card) return;
     card.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1192,6 +1195,83 @@ class GameController {
       el = card.querySelector('.edit-q-input-hint');
     }
     if (el) setTimeout(() => el.focus(), 150);
+  }
+
+  /**
+   * Validate toàn bộ câu hỏi trong mảng (dùng chung cho cả 2 modal)
+   * @param {Array<Object>} questionsArray
+   * @param {HTMLElement} container
+   * @param {Function} showErrorFn
+   * @returns {boolean}
+   */
+  _validateQuestions(questionsArray, container, showErrorFn) {
+    if (!questionsArray || questionsArray.length === 0) {
+      showErrorFn('Mỗi kỷ niệm cần tối thiểu 1 câu hỏi.');
+      return false;
+    }
+
+    const letters = ['A', 'B', 'C', 'D'];
+    for (let i = 0; i < questionsArray.length; i++) {
+      const q = questionsArray[i];
+      const qNum = i + 1;
+
+      if (!q.question || !q.question.trim()) {
+        showErrorFn(`Câu hỏi #${qNum}: Vui lòng nhập nội dung câu hỏi.`);
+        this._focusQuestionField(container, i, 'question');
+        return false;
+      }
+
+      for (let j = 0; j < 4; j++) {
+        if (!q.options[j] || !q.options[j].trim()) {
+          showErrorFn(`Câu hỏi #${qNum}: Vui lòng nhập lựa chọn ${letters[j]}.`);
+          this._focusQuestionField(container, i, `option-${j}`);
+          return false;
+        }
+      }
+
+      if (!q.correctAnswer || !q.correctAnswer.trim()) {
+        showErrorFn(`Câu hỏi #${qNum}: Vui lòng chọn đáp án đúng.`);
+        this._focusQuestionField(container, i, 'correctAnswer');
+        return false;
+      }
+
+      const trimmedOptions = q.options.map(o => o.trim());
+      if (!trimmedOptions.includes(q.correctAnswer.trim())) {
+        showErrorFn(`Câu hỏi #${qNum}: Đáp án đúng không khớp với bất kỳ lựa chọn nào trong 4 lựa chọn.`);
+        this._focusQuestionField(container, i, 'correctAnswer');
+        return false;
+      }
+
+      if (!q.hint || !q.hint.trim()) {
+        showErrorFn(`Câu hỏi #${qNum}: Vui lòng nhập gợi ý khi trả lời sai.`);
+        this._focusQuestionField(container, i, 'hint');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Render danh sách câu hỏi của modal Chỉnh sửa
+   */
+  renderEditingQuestions() {
+    this._renderQuestionCards(
+      this.editQuestionsContainer,
+      this.editingQuestions,
+      this.editQuestionsCount,
+      () => this.renderEditingQuestions()
+    );
+  }
+
+  /**
+   * Thêm 1 câu hỏi trống mới vào modal Chỉnh sửa
+   */
+  addEditingQuestion() {
+    this._addQuestion(
+      this.editQuestionsContainer,
+      this.editingQuestions,
+      () => this.renderEditingQuestions()
+    );
   }
 
   /**
@@ -1318,51 +1398,10 @@ class GameController {
         return;
       }
 
-      // Thu thập dữ liệu các câu hỏi từ DOM
-      this._harvestEditingQuestions();
-
-      if (!this.editingQuestions || this.editingQuestions.length === 0) {
-        this.showEditSceneError('Mỗi kỷ niệm cần tối thiểu 1 câu hỏi.');
+      // Thu thập dữ liệu các câu hỏi từ DOM và validate
+      this._harvestQuestions(this.editQuestionsContainer, this.editingQuestions);
+      if (!this._validateQuestions(this.editingQuestions, this.editQuestionsContainer, (msg) => this.showEditSceneError(msg))) {
         return;
-      }
-
-      const letters = ['A', 'B', 'C', 'D'];
-      for (let i = 0; i < this.editingQuestions.length; i++) {
-        const q = this.editingQuestions[i];
-        const qNum = i + 1;
-
-        if (!q.question || !q.question.trim()) {
-          this.showEditSceneError(`Câu hỏi #${qNum}: Vui lòng nhập nội dung câu hỏi.`);
-          this._focusQuestionField(i, 'question');
-          return;
-        }
-
-        for (let j = 0; j < 4; j++) {
-          if (!q.options[j] || !q.options[j].trim()) {
-            this.showEditSceneError(`Câu hỏi #${qNum}: Vui lòng nhập lựa chọn ${letters[j]}.`);
-            this._focusQuestionField(i, `option-${j}`);
-            return;
-          }
-        }
-
-        if (!q.correctAnswer || !q.correctAnswer.trim()) {
-          this.showEditSceneError(`Câu hỏi #${qNum}: Vui lòng chọn đáp án đúng.`);
-          this._focusQuestionField(i, 'correctAnswer');
-          return;
-        }
-
-        const trimmedOptions = q.options.map(o => o.trim());
-        if (!trimmedOptions.includes(q.correctAnswer.trim())) {
-          this.showEditSceneError(`Câu hỏi #${qNum}: Đáp án đúng không khớp với bất kỳ lựa chọn nào trong 4 lựa chọn.`);
-          this._focusQuestionField(i, 'correctAnswer');
-          return;
-        }
-
-        if (!q.hint || !q.hint.trim()) {
-          this.showEditSceneError(`Câu hỏi #${qNum}: Vui lòng nhập gợi ý khi trả lời sai.`);
-          this._focusQuestionField(i, 'hint');
-          return;
-        }
       }
     } else {
       epilogueMsg = this.editEpilogueMsg ? this.editEpilogueMsg.value.trim() : '';
@@ -1476,26 +1515,21 @@ class GameController {
    * Khởi tạo tham chiếu và sự kiện cho modal thêm scene mới
    */
   initAddSceneModal() {
-    this.addSceneModal     = document.getElementById('add-scene-modal');
-    this.addSceneForm      = document.getElementById('add-scene-form');
-    this.addSceneCloseX    = document.getElementById('add-scene-close-x');
-    this.addSceneCancelBtn = document.getElementById('add-scene-cancel-btn');
-    this.addSceneSaveBtn   = document.getElementById('add-scene-save-btn');
-    this.addSceneErrorMsg  = document.getElementById('add-scene-error-msg');
+    this.addSceneModal         = document.getElementById('add-scene-modal');
+    this.addSceneForm          = document.getElementById('add-scene-form');
+    this.addSceneCloseX        = document.getElementById('add-scene-close-x');
+    this.addSceneCancelBtn     = document.getElementById('add-scene-cancel-btn');
+    this.addSceneSaveBtn       = document.getElementById('add-scene-save-btn');
+    this.addSceneErrorMsg      = document.getElementById('add-scene-error-msg');
 
-    this.addInsertPosition = document.getElementById('add-insert-position');
-    this.addSceneName      = document.getElementById('add-scene-name');
-    this.addJournalEntry   = document.getElementById('add-journal-entry');
-    this.addQuestion       = document.getElementById('add-question');
-    this.addOptionInputs   = [
-      document.getElementById('add-option-0'),
-      document.getElementById('add-option-1'),
-      document.getElementById('add-option-2'),
-      document.getElementById('add-option-3')
-    ];
-    this.addCorrectAnswer  = document.getElementById('add-correct-answer');
-    this.addHint           = document.getElementById('add-hint');
-    this.addMediaUrl       = document.getElementById('add-media-url');
+    this.addInsertPosition     = document.getElementById('add-insert-position');
+    this.addSceneName          = document.getElementById('add-scene-name');
+    this.addJournalEntry       = document.getElementById('add-journal-entry');
+    this.addQuestionsContainer = document.getElementById('add-questions-container');
+    this.addQuestionsCount     = document.getElementById('add-questions-count');
+    this.addAddQuestionBtn     = document.getElementById('add-add-question-btn');
+    this.addMediaUrl           = document.getElementById('add-media-url');
+    this.addingQuestions       = [];
 
     if (this.addSceneCloseX) {
       this.addSceneCloseX.addEventListener('click', () => this.closeAddSceneModal());
@@ -1509,12 +1543,32 @@ class GameController {
       this.addSceneForm.addEventListener('submit', (e) => this.saveNewScene(e));
     }
 
-    // Cập nhật dropdown đáp án đúng khi gõ vào 4 options
-    this.addOptionInputs.forEach(input => {
-      if (input) {
-        input.addEventListener('input', () => this.syncAddCorrectAnswerOptions());
-      }
-    });
+    if (this.addAddQuestionBtn) {
+      this.addAddQuestionBtn.addEventListener('click', () => this.addAddingQuestion());
+    }
+  }
+
+  /**
+   * Render danh sách câu hỏi của modal Thêm kỷ niệm mới
+   */
+  renderAddingQuestions() {
+    this._renderQuestionCards(
+      this.addQuestionsContainer,
+      this.addingQuestions,
+      this.addQuestionsCount,
+      () => this.renderAddingQuestions()
+    );
+  }
+
+  /**
+   * Thêm 1 câu hỏi trống mới vào modal Thêm kỷ niệm mới
+   */
+  addAddingQuestion() {
+    this._addQuestion(
+      this.addQuestionsContainer,
+      this.addingQuestions,
+      () => this.renderAddingQuestions()
+    );
   }
 
   /**
@@ -1542,30 +1596,6 @@ class GameController {
   }
 
   /**
-   * Đồng bộ 4 lựa chọn nhập vào danh sách dropdown đáp án đúng của form thêm mới
-   */
-  syncAddCorrectAnswerOptions() {
-    if (!this.addCorrectAnswer) return;
-    const currentVal = this.addCorrectAnswer.value;
-    const letters = ['A', 'B', 'C', 'D'];
-
-    this.addCorrectAnswer.innerHTML = '<option value="">-- Chọn đáp án đúng từ 4 lựa chọn trên --</option>';
-
-    this.addOptionInputs.forEach((input, i) => {
-      const val = input ? input.value.trim() : '';
-      if (val) {
-        const opt = document.createElement('option');
-        opt.value = val;
-        opt.textContent = `[${letters[i]}] ${val}`;
-        if (val === currentVal) {
-          opt.selected = true;
-        }
-        this.addCorrectAnswer.appendChild(opt);
-      }
-    });
-  }
-
-  /**
    * Mở modal thêm kỷ niệm mới
    */
   openAddSceneModal() {
@@ -1574,14 +1604,19 @@ class GameController {
     // Reset các trường nhập
     if (this.addSceneName) this.addSceneName.value = '';
     if (this.addJournalEntry) this.addJournalEntry.value = '';
-    if (this.addQuestion) this.addQuestion.value = '';
-    this.addOptionInputs.forEach(input => { if (input) input.value = ''; });
-    if (this.addHint) this.addHint.value = '';
     if (this.addMediaUrl) this.addMediaUrl.value = '';
 
-    // Cập nhật dropdown vị trí và đáp án đúng
+    // Khởi tạo mảng câu hỏi mặc định có đúng 1 câu hỏi trống
+    this.addingQuestions = [{
+      question: '',
+      options: ['', '', '', ''],
+      correctAnswer: '',
+      hint: ''
+    }];
+    this.renderAddingQuestions();
+
+    // Cập nhật dropdown vị trí
     this.populateInsertPositionDropdown();
-    this.syncAddCorrectAnswerOptions();
     this.hideAddSceneError();
 
     // Mở modal
@@ -1669,31 +1704,18 @@ class GameController {
 
     // 1. Validate các trường bắt buộc
     const journal = this.addJournalEntry ? this.addJournalEntry.value.trim() : '';
-    const question = this.addQuestion ? this.addQuestion.value.trim() : '';
-    const options = this.addOptionInputs.map(input => input ? input.value.trim() : '');
-    const correctAnswer = this.addCorrectAnswer ? this.addCorrectAnswer.value.trim() : '';
-    const hint = this.addHint ? this.addHint.value.trim() : '';
-    const mediaUrl = this.addMediaUrl ? this.addMediaUrl.value.trim() : '';
     const customName = this.addSceneName ? this.addSceneName.value.trim() : '';
+    const mediaUrl = this.addMediaUrl ? this.addMediaUrl.value.trim() : '';
 
     if (!journal) {
       this.showAddSceneError('Vui lòng nhập đoạn nhật ký.');
+      if (this.addJournalEntry) this.addJournalEntry.focus();
       return;
     }
-    if (!question) {
-      this.showAddSceneError('Vui lòng nhập câu hỏi trắc nghiệm.');
-      return;
-    }
-    if (options.some(o => !o)) {
-      this.showAddSceneError('Vui lòng nhập đầy đủ cả 4 lựa chọn trắc nghiệm.');
-      return;
-    }
-    if (!correctAnswer) {
-      this.showAddSceneError('Vui lòng chọn 1 đáp án đúng từ danh sách.');
-      return;
-    }
-    if (!hint) {
-      this.showAddSceneError('Vui lòng nhập gợi ý khi trả lời sai.');
+
+    // Thu thập dữ liệu các câu hỏi từ DOM và validate
+    this._harvestQuestions(this.addQuestionsContainer, this.addingQuestions);
+    if (!this._validateQuestions(this.addingQuestions, this.addQuestionsContainer, (msg) => this.showAddSceneError(msg))) {
       return;
     }
 
@@ -1712,10 +1734,12 @@ class GameController {
       sceneName: customName || 'Kỷ niệm mới',
       isEpilogue: false,
       journalEntry: journal,
-      question: question,
-      options: options,
-      correctAnswer: correctAnswer,
-      hint: hint,
+      questions: this.addingQuestions.map(q => ({
+        question: q.question.trim(),
+        options: q.options.map(o => o.trim()),
+        correctAnswer: q.correctAnswer.trim(),
+        hint: q.hint.trim()
+      })),
       mediaUrl: mediaUrl || null,
       epilogueMessage: null,
       pin: window.APP_CONFIG?.adminPin ? String(window.APP_CONFIG.adminPin).trim() : ''

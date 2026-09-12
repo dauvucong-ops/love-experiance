@@ -893,7 +893,7 @@ class GameController {
   }
 
   /**
-   * Khởi tạo tham chiếu và sự kiện cho modal chỉnh sửa scene
+   * Khởi tạo tham chiếu và sự kiện cho modal chỉnh sửa scene (Phase 4)
    */
   initEditSceneModal() {
     this.editSceneModal    = document.getElementById('edit-scene-modal');
@@ -908,17 +908,14 @@ class GameController {
     this.editEpilogueFields = document.getElementById('edit-epilogue-fields');
 
     this.editJournalEntry  = document.getElementById('edit-journal-entry');
-    this.editQuestion      = document.getElementById('edit-question');
-    this.editOptionInputs  = [
-      document.getElementById('edit-option-0'),
-      document.getElementById('edit-option-1'),
-      document.getElementById('edit-option-2'),
-      document.getElementById('edit-option-3')
-    ];
-    this.editCorrectAnswer = document.getElementById('edit-correct-answer');
-    this.editHint          = document.getElementById('edit-hint');
     this.editEpilogueMsg   = document.getElementById('edit-epilogue-message');
     this.editMediaUrl      = document.getElementById('edit-media-url');
+
+    // Quản lý danh sách câu hỏi động
+    this.editQuestionsContainer = document.getElementById('edit-questions-container');
+    this.editAddQuestionBtn     = document.getElementById('edit-add-question-btn');
+    this.editQuestionsCount     = document.getElementById('edit-questions-count');
+    this.editingQuestions       = [];
 
     if (this.editSceneCloseX) {
       this.editSceneCloseX.addEventListener('click', () => this.closeEditSceneModal());
@@ -932,37 +929,269 @@ class GameController {
       this.editSceneForm.addEventListener('submit', (e) => this.saveSceneEdit(e));
     }
 
-    // Cập nhật dropdown đáp án đúng khi gõ vào 4 options
-    this.editOptionInputs.forEach(input => {
-      if (input) {
-        input.addEventListener('input', () => this.syncCorrectAnswerOptions());
+    if (this.editAddQuestionBtn) {
+      this.editAddQuestionBtn.addEventListener('click', () => this.addEditingQuestion());
+    }
+  }
+
+  /**
+   * Thu thập dữ liệu đang gõ dở từ các thẻ câu hỏi trong DOM vào this.editingQuestions
+   */
+  _harvestEditingQuestions() {
+    if (!this.editQuestionsContainer) return;
+    const cards = this.editQuestionsContainer.querySelectorAll('.edit-question-card');
+    cards.forEach((card, idx) => {
+      if (!this.editingQuestions[idx]) {
+        this.editingQuestions[idx] = { question: '', options: ['', '', '', ''], correctAnswer: '', hint: '' };
       }
+      const qInput = card.querySelector('.edit-q-input-question');
+      const optInputs = card.querySelectorAll('.edit-q-option');
+      const correctSelect = card.querySelector('.edit-q-correct-select');
+      const hintInput = card.querySelector('.edit-q-input-hint');
+
+      if (qInput) this.editingQuestions[idx].question = qInput.value;
+      if (optInputs) {
+        this.editingQuestions[idx].options = Array.from(optInputs).map(inp => inp.value);
+      }
+      if (correctSelect) this.editingQuestions[idx].correctAnswer = correctSelect.value;
+      if (hintInput) this.editingQuestions[idx].hint = hintInput.value;
     });
   }
 
   /**
-   * Đồng bộ 4 lựa chọn nhập vào danh sách dropdown đáp án đúng
-   * @param {string|null} preserveAnswer
+   * Render toàn bộ danh sách các thẻ câu hỏi trong this.editingQuestions vào DOM
    */
-  syncCorrectAnswerOptions(preserveAnswer = null) {
-    if (!this.editCorrectAnswer) return;
-    const currentVal = preserveAnswer !== null ? preserveAnswer : this.editCorrectAnswer.value;
+  renderEditingQuestions() {
+    if (!this.editQuestionsContainer) return;
+    this.editQuestionsContainer.innerHTML = '';
+
+    const total = this.editingQuestions.length;
+    if (this.editQuestionsCount) {
+      this.editQuestionsCount.textContent = `${total} câu`;
+    }
+
     const letters = ['A', 'B', 'C', 'D'];
 
-    this.editCorrectAnswer.innerHTML = '<option value="">-- Chọn đáp án đúng từ 4 lựa chọn trên --</option>';
+    this.editingQuestions.forEach((q, idx) => {
+      const card = document.createElement('div');
+      card.className = 'edit-question-card';
+      card.dataset.questionIndex = idx;
 
-    this.editOptionInputs.forEach((input, i) => {
-      const val = input ? input.value.trim() : '';
-      if (val) {
-        const opt = document.createElement('option');
-        opt.value = val;
-        opt.textContent = `[${letters[i]}] ${val}`;
-        if (val === currentVal) {
-          opt.selected = true;
-        }
-        this.editCorrectAnswer.appendChild(opt);
+      // Card Header: Tiêu đề + Nút Lên, Xuống, Xoá
+      const header = document.createElement('div');
+      header.className = 'edit-q-card-header';
+
+      const title = document.createElement('span');
+      title.className = 'edit-q-card-title';
+      title.textContent = `Câu hỏi #${idx + 1}`;
+      header.appendChild(title);
+
+      const actions = document.createElement('div');
+      actions.className = 'edit-q-card-actions';
+
+      // Nút Di chuyển Lên
+      const btnUp = document.createElement('button');
+      btnUp.type = 'button';
+      btnUp.className = 'btn-q-action btn-q-up';
+      btnUp.title = 'Di chuyển câu hỏi này lên trên';
+      btnUp.innerHTML = '▲';
+      btnUp.disabled = idx === 0;
+      btnUp.addEventListener('click', () => this.moveEditingQuestion(idx, -1));
+      actions.appendChild(btnUp);
+
+      // Nút Di chuyển Xuống
+      const btnDown = document.createElement('button');
+      btnDown.type = 'button';
+      btnDown.className = 'btn-q-action btn-q-down';
+      btnDown.title = 'Di chuyển câu hỏi này xuống dưới';
+      btnDown.innerHTML = '▼';
+      btnDown.disabled = idx === total - 1;
+      btnDown.addEventListener('click', () => this.moveEditingQuestion(idx, 1));
+      actions.appendChild(btnDown);
+
+      // Nút Xoá
+      const btnDelete = document.createElement('button');
+      btnDelete.type = 'button';
+      btnDelete.className = 'btn-q-action btn-q-delete';
+      btnDelete.title = 'Xoá câu hỏi này';
+      btnDelete.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      `;
+      btnDelete.addEventListener('click', () => this.deleteEditingQuestion(idx));
+      actions.appendChild(btnDelete);
+
+      header.appendChild(actions);
+      card.appendChild(header);
+
+      // 1. Nội dung câu hỏi
+      const qGroup = document.createElement('div');
+      qGroup.className = 'form-group';
+      const qLabel = document.createElement('label');
+      qLabel.innerHTML = `Nội dung câu hỏi <span class="req">*</span>`;
+      const qInput = document.createElement('input');
+      qInput.type = 'text';
+      qInput.className = 'edit-q-input-question';
+      qInput.placeholder = 'Nhập câu hỏi trắc nghiệm...';
+      qInput.value = q.question || '';
+      qGroup.appendChild(qLabel);
+      qGroup.appendChild(qInput);
+      card.appendChild(qGroup);
+
+      // 2. 4 Lựa chọn trắc nghiệm
+      const optGroup = document.createElement('div');
+      optGroup.className = 'form-group';
+      const optLabel = document.createElement('label');
+      optLabel.innerHTML = `4 Lựa chọn trắc nghiệm <span class="req">*</span>`;
+      optGroup.appendChild(optLabel);
+
+      const optGrid = document.createElement('div');
+      optGrid.className = 'options-inputs-grid';
+
+      const optInputs = [];
+      const opts = Array.isArray(q.options) ? q.options : ['', '', '', ''];
+      for (let i = 0; i < 4; i++) {
+        const optInput = document.createElement('input');
+        optInput.type = 'text';
+        optInput.className = 'edit-q-option';
+        optInput.dataset.optIdx = i;
+        optInput.placeholder = `Lựa chọn ${letters[i]}...`;
+        optInput.value = opts[i] || '';
+        optInputs.push(optInput);
+        optGrid.appendChild(optInput);
       }
+      optGroup.appendChild(optGrid);
+      card.appendChild(optGroup);
+
+      // 3. Đáp án đúng (dropdown tự đồng bộ từ 4 options)
+      const correctGroup = document.createElement('div');
+      correctGroup.className = 'form-group';
+      const correctLabel = document.createElement('label');
+      correctLabel.innerHTML = `Đáp án đúng <span class="req">*</span>`;
+      const correctSelect = document.createElement('select');
+      correctSelect.className = 'edit-q-correct-select';
+      correctGroup.appendChild(correctLabel);
+      correctGroup.appendChild(correctSelect);
+      card.appendChild(correctGroup);
+
+      const syncCardSelect = (preserve = null) => {
+        const valToKeep = preserve !== null ? preserve : correctSelect.value;
+        correctSelect.innerHTML = '<option value="">-- Chọn đáp án đúng từ 4 lựa chọn trên --</option>';
+        optInputs.forEach((inp, i) => {
+          const v = inp.value.trim();
+          if (v) {
+            const opt = document.createElement('option');
+            opt.value = v;
+            opt.textContent = `[${letters[i]}] ${v}`;
+            if (v === valToKeep) opt.selected = true;
+            correctSelect.appendChild(opt);
+          }
+        });
+      };
+
+      optInputs.forEach(inp => {
+        inp.addEventListener('input', () => syncCardSelect());
+      });
+
+      syncCardSelect(q.correctAnswer || '');
+
+      // 4. Gợi ý khi trả lời sai (Hint)
+      const hintGroup = document.createElement('div');
+      hintGroup.className = 'form-group';
+      const hintLabel = document.createElement('label');
+      hintLabel.innerHTML = `Gợi ý khi trả lời sai <span class="req">*</span>`;
+      const hintInput = document.createElement('input');
+      hintInput.type = 'text';
+      hintInput.className = 'edit-q-input-hint';
+      hintInput.placeholder = 'Nhập gợi ý khi trả lời sai...';
+      hintInput.value = q.hint || '';
+      hintGroup.appendChild(hintLabel);
+      hintGroup.appendChild(hintInput);
+      card.appendChild(hintGroup);
+
+      this.editQuestionsContainer.appendChild(card);
     });
+  }
+
+  /**
+   * Thêm 1 câu hỏi trống mới vào danh sách
+   */
+  addEditingQuestion() {
+    this._harvestEditingQuestions();
+    this.editingQuestions.push({
+      question: '',
+      options: ['', '', '', ''],
+      correctAnswer: '',
+      hint: ''
+    });
+    this.renderEditingQuestions();
+
+    setTimeout(() => {
+      if (!this.editQuestionsContainer) return;
+      const cards = this.editQuestionsContainer.querySelectorAll('.edit-question-card');
+      const lastCard = cards[cards.length - 1];
+      if (lastCard) {
+        lastCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const firstInput = lastCard.querySelector('.edit-q-input-question');
+        if (firstInput) firstInput.focus();
+      }
+    }, 100);
+  }
+
+  /**
+   * Đổi vị trí câu hỏi trong mảng (lên hoặc xuống)
+   */
+  moveEditingQuestion(index, direction) {
+    this._harvestEditingQuestions();
+    const target = index + direction;
+    if (target < 0 || target >= this.editingQuestions.length) return;
+
+    const temp = this.editingQuestions[index];
+    this.editingQuestions[index] = this.editingQuestions[target];
+    this.editingQuestions[target] = temp;
+
+    this.renderEditingQuestions();
+  }
+
+  /**
+   * Xoá một câu hỏi khỏi danh sách
+   */
+  deleteEditingQuestion(index) {
+    this._harvestEditingQuestions();
+    if (this.editingQuestions.length <= 1) {
+      alert('Mỗi kỷ niệm cần tối thiểu 1 câu hỏi, không thể xoá hết.');
+      return;
+    }
+
+    if (confirm(`Bạn có chắc chắn muốn xoá Câu hỏi #${index + 1}?`)) {
+      this.editingQuestions.splice(index, 1);
+      this.renderEditingQuestions();
+    }
+  }
+
+  /**
+   * Cuộn và focus vào trường bị lỗi trong thẻ câu hỏi cụ thể
+   */
+  _focusQuestionField(questionIdx, fieldType) {
+    if (!this.editQuestionsContainer) return;
+    const cards = this.editQuestionsContainer.querySelectorAll('.edit-question-card');
+    const card = cards[questionIdx];
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    let el;
+    if (fieldType === 'question') {
+      el = card.querySelector('.edit-q-input-question');
+    } else if (fieldType.startsWith('option-')) {
+      const optIdx = fieldType.split('-')[1];
+      el = card.querySelector(`.edit-q-option[data-opt-idx="${optIdx}"]`);
+    } else if (fieldType === 'correctAnswer') {
+      el = card.querySelector('.edit-q-correct-select');
+    } else if (fieldType === 'hint') {
+      el = card.querySelector('.edit-q-input-hint');
+    }
+    if (el) setTimeout(() => el.focus(), 150);
   }
 
   /**
@@ -995,15 +1224,34 @@ class GameController {
       if (this.editQuizFields) this.editQuizFields.classList.remove('hidden');
       if (this.editEpilogueFields) this.editEpilogueFields.classList.add('hidden');
       if (this.editJournalEntry) this.editJournalEntry.value = scene.journalEntry || '';
-      if (this.editQuestion) this.editQuestion.value = scene.question || '';
 
-      const opts = Array.isArray(scene.options) ? scene.options : ['', '', '', ''];
-      this.editOptionInputs.forEach((input, i) => {
-        if (input) input.value = opts[i] || '';
-      });
+      // Đọc danh sách câu hỏi từ scene.questions (đã chuẩn hoá từ Phase 1/2)
+      let questions = [];
+      if (Array.isArray(scene.questions) && scene.questions.length > 0) {
+        questions = scene.questions.map(q => ({
+          question: q.question || '',
+          options: Array.isArray(q.options) ? [...q.options] : ['', '', '', ''],
+          correctAnswer: q.correctAnswer || '',
+          hint: q.hint || ''
+        }));
+      } else if (scene.question) {
+        questions = [{
+          question: scene.question || '',
+          options: Array.isArray(scene.options) ? [...scene.options] : ['', '', '', ''],
+          correctAnswer: scene.correctAnswer || '',
+          hint: scene.hint || ''
+        }];
+      } else {
+        questions = [{
+          question: '',
+          options: ['', '', '', ''],
+          correctAnswer: '',
+          hint: ''
+        }];
+      }
 
-      this.syncCorrectAnswerOptions(scene.correctAnswer || '');
-      if (this.editHint) this.editHint.value = scene.hint || '';
+      this.editingQuestions = questions;
+      this.renderEditingQuestions();
     }
 
     // Media Url
@@ -1059,52 +1307,75 @@ class GameController {
 
     const isEpilogue = Boolean(scene.isEpilogue || scene.question === null);
 
-    // 1. Validate cơ bản
     let journal = '';
-    let question = '';
-    let options = [];
-    let correctAnswer = '';
-    let hint = '';
     let epilogueMsg = '';
 
     if (!isEpilogue) {
       journal = this.editJournalEntry ? this.editJournalEntry.value.trim() : '';
-      question = this.editQuestion ? this.editQuestion.value.trim() : '';
-      options = this.editOptionInputs.map(input => input ? input.value.trim() : '');
-      correctAnswer = this.editCorrectAnswer ? this.editCorrectAnswer.value.trim() : '';
-      hint = this.editHint ? this.editHint.value.trim() : '';
-
       if (!journal) {
         this.showEditSceneError('Vui lòng nhập đoạn nhật ký.');
+        if (this.editJournalEntry) this.editJournalEntry.focus();
         return;
       }
-      if (!question) {
-        this.showEditSceneError('Vui lòng nhập câu hỏi trắc nghiệm.');
+
+      // Thu thập dữ liệu các câu hỏi từ DOM
+      this._harvestEditingQuestions();
+
+      if (!this.editingQuestions || this.editingQuestions.length === 0) {
+        this.showEditSceneError('Mỗi kỷ niệm cần tối thiểu 1 câu hỏi.');
         return;
       }
-      if (options.some(o => !o)) {
-        this.showEditSceneError('Vui lòng nhập đầy đủ cả 4 lựa chọn trắc nghiệm.');
-        return;
-      }
-      if (!correctAnswer) {
-        this.showEditSceneError('Vui lòng chọn 1 đáp án đúng từ danh sách.');
-        return;
-      }
-      if (!hint) {
-        this.showEditSceneError('Vui lòng nhập gợi ý khi trả lời sai.');
-        return;
+
+      const letters = ['A', 'B', 'C', 'D'];
+      for (let i = 0; i < this.editingQuestions.length; i++) {
+        const q = this.editingQuestions[i];
+        const qNum = i + 1;
+
+        if (!q.question || !q.question.trim()) {
+          this.showEditSceneError(`Câu hỏi #${qNum}: Vui lòng nhập nội dung câu hỏi.`);
+          this._focusQuestionField(i, 'question');
+          return;
+        }
+
+        for (let j = 0; j < 4; j++) {
+          if (!q.options[j] || !q.options[j].trim()) {
+            this.showEditSceneError(`Câu hỏi #${qNum}: Vui lòng nhập lựa chọn ${letters[j]}.`);
+            this._focusQuestionField(i, `option-${j}`);
+            return;
+          }
+        }
+
+        if (!q.correctAnswer || !q.correctAnswer.trim()) {
+          this.showEditSceneError(`Câu hỏi #${qNum}: Vui lòng chọn đáp án đúng.`);
+          this._focusQuestionField(i, 'correctAnswer');
+          return;
+        }
+
+        const trimmedOptions = q.options.map(o => o.trim());
+        if (!trimmedOptions.includes(q.correctAnswer.trim())) {
+          this.showEditSceneError(`Câu hỏi #${qNum}: Đáp án đúng không khớp với bất kỳ lựa chọn nào trong 4 lựa chọn.`);
+          this._focusQuestionField(i, 'correctAnswer');
+          return;
+        }
+
+        if (!q.hint || !q.hint.trim()) {
+          this.showEditSceneError(`Câu hỏi #${qNum}: Vui lòng nhập gợi ý khi trả lời sai.`);
+          this._focusQuestionField(i, 'hint');
+          return;
+        }
       }
     } else {
       epilogueMsg = this.editEpilogueMsg ? this.editEpilogueMsg.value.trim() : '';
       if (!epilogueMsg) {
         this.showEditSceneError('Vui lòng nhập lời nhắn kết thúc.');
+        if (this.editEpilogueMsg) this.editEpilogueMsg.focus();
         return;
       }
     }
 
     const mediaUrl = this.editMediaUrl ? this.editMediaUrl.value.trim() : '';
 
-    // 2. Chuẩn bị payload đúng schema Firestore (kèm field pin để khớp Security Rules)
+    // 2. Chuẩn bị payload: ghi đè field questions (mảng mới), không cần ghi lại field cũ rời rạc
     const payload = {
       order: Number(scene.id),
       sceneName: scene.sceneName,
@@ -1115,17 +1386,16 @@ class GameController {
 
     if (!isEpilogue) {
       payload.journalEntry = journal;
-      payload.question = question;
-      payload.options = options;
-      payload.correctAnswer = correctAnswer;
-      payload.hint = hint;
+      payload.questions = this.editingQuestions.map(q => ({
+        question: q.question.trim(),
+        options: q.options.map(o => o.trim()),
+        correctAnswer: q.correctAnswer.trim(),
+        hint: q.hint.trim()
+      }));
       payload.epilogueMessage = null;
     } else {
       payload.journalEntry = null;
-      payload.question = null;
-      payload.options = null;
-      payload.correctAnswer = null;
-      payload.hint = null;
+      payload.questions = [];
       payload.epilogueMessage = epilogueMsg;
     }
 
@@ -1144,7 +1414,7 @@ class GameController {
       }
 
       await window.__LJ_UPDATE_SCENE(firestoreId, payload);
-      console.log(`[LoveJourney] Đã cập nhật ${firestoreId} thành công.`);
+      console.log(`[LoveJourney] Đã cập nhật ${firestoreId} thành công với ${payload.questions ? payload.questions.length : 0} câu hỏi.`);
       this.closeEditSceneModal();
     } catch (err) {
       console.warn('[LoveJourney] Lỗi lưu scene:', err);

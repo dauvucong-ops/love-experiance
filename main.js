@@ -162,13 +162,37 @@ class GameController {
   _showEpilogue(scene) {
     this.quizContainer.classList.add('hidden');
     this.epilogueTitle.textContent = stripSceneOrdinalPrefix(scene.sceneName);
-    this.epilogueMessage.textContent = scene.epilogueMessage || '';
+    this._renderEpilogueMessage(scene.epilogueMessage);
     this.epilogueContainer.classList.remove('hidden');
 
     // Hiện media nếu có
     if (scene.mediaAfterUnlock && scene.mediaAfterUnlock.src) {
       this._renderMedia(scene.mediaAfterUnlock, this.epilogueContainer);
     }
+  }
+
+  // ── Render thông điệp epilogue theo từng dòng với animation so le ──
+  _renderEpilogueMessage(rawMsg) {
+    if (!this.epilogueMessage) return;
+    this.epilogueMessage.innerHTML = '';
+    if (!rawMsg) return;
+
+    // Ưu tiên tách theo dòng xuống hàng (\n), nếu là 1 đoạn đơn thì tách theo câu (. ! ?)
+    let lines = rawMsg.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length === 1 && /[.!?]/.test(rawMsg)) {
+      const sentenceSplit = rawMsg.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
+      if (sentenceSplit && sentenceSplit.length > 1) {
+        lines = sentenceSplit.map(s => s.trim()).filter(Boolean);
+      }
+    }
+
+    lines.forEach((lineText, idx) => {
+      const span = document.createElement('span');
+      span.className = 'epilogue-line';
+      span.style.animationDelay = `${0.45 + idx * 0.3}s`;
+      span.textContent = lineText;
+      this.epilogueMessage.appendChild(span);
+    });
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -262,6 +286,7 @@ class GameController {
     if (isCorrect) {
       // ── Đáp án ĐÚNG ──
       btnEl.classList.add('is-correct');
+      this._triggerCelebration(btnEl);
 
       // Disable toàn bộ nút lựa chọn
       this.optionsList.querySelectorAll('.option-btn').forEach(b => {
@@ -322,6 +347,37 @@ class GameController {
         this.feedbackMsg.classList.add('hidden');
       }, 2000);
     }
+  }
+
+  // ── Helper: tạo hiệu ứng sparkle / trái tim ăn mừng nhẹ khi trả lời đúng ──
+  _triggerCelebration(targetEl) {
+    if (!targetEl) return;
+    const burst = document.createElement('div');
+    burst.className = 'sparkle-burst';
+    burst.setAttribute('aria-hidden', 'true');
+
+    const particles = [
+      { sym: '❤', cls: 'sparkle-p1' },
+      { sym: '✨', cls: 'sparkle-p2' },
+      { sym: '✦', cls: 'sparkle-p3' },
+      { sym: '💖', cls: 'sparkle-p4' },
+      { sym: '✨', cls: 'sparkle-p5' },
+      { sym: '❤', cls: 'sparkle-p6' }
+    ];
+
+    particles.forEach(p => {
+      const span = document.createElement('span');
+      span.className = `sparkle-particle ${p.cls}`;
+      span.textContent = p.sym;
+      burst.appendChild(span);
+    });
+
+    targetEl.appendChild(burst);
+
+    // Dọn dẹp DOM sau khi hiệu ứng bay kết thúc (850ms)
+    setTimeout(() => {
+      if (burst.parentNode) burst.parentNode.removeChild(burst);
+    }, 850);
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -408,7 +464,7 @@ class GameController {
         this.epilogueTitle.textContent = stripSceneOrdinalPrefix(scene.sceneName);
       }
       if (scene.epilogueMessage && this.epilogueMessage) {
-        this.epilogueMessage.textContent = scene.epilogueMessage;
+        this._renderEpilogueMessage(scene.epilogueMessage);
       }
     } else {
       // Scene hiện tại bị xoá khỏi Firestore → về scene cuối cùng còn lại

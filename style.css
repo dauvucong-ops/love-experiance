@@ -240,7 +240,7 @@ body {
   border-radius: var(--radius-pill);
   box-shadow: 0 5px 18px rgba(184, 74, 91, 0.32);
   cursor: pointer;
-  transition: var(--transition-smooth);
+  transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -254,7 +254,7 @@ body {
 }
 
 #continue-btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
 /* ==========================================================================
@@ -321,7 +321,7 @@ body {
   text-align: left;
   line-height: 1.4;
   cursor: pointer;
-  transition: var(--transition-smooth);
+  transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   position: relative;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 }
@@ -335,7 +335,7 @@ body {
 }
 
 .option-btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
 /* ==========================================================================
@@ -369,6 +369,54 @@ body {
   50% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(67, 142, 112, 0); }
   100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(67, 142, 112, 0); }
 }
+
+/* --- Hiệu ứng ăn mừng khi trả lời đúng (Sparkle / Heart Burst) --- */
+.sparkle-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.sparkle-particle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: 1.15rem;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+  animation: sparkleFly 0.75s cubic-bezier(0.15, 0.85, 0.35, 1.2) forwards;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 2px 4px rgba(184, 74, 91, 0.25));
+}
+
+@keyframes sparkleFly {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.2);
+  }
+  25% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx, 0px), var(--dy, -40px)) scale(var(--scale, 1));
+  }
+}
+
+.sparkle-p1 { --dx: -42px; --dy: -44px; --scale: 1.1;  color: var(--primary-color); animation-delay: 0s; }
+.sparkle-p2 { --dx: 38px;  --dy: -48px; --scale: 1.25; color: var(--accent-gold);   animation-delay: 0.04s; }
+.sparkle-p3 { --dx: -18px; --dy: -60px; --scale: 0.95; color: var(--accent-rose);   animation-delay: 0.08s; }
+.sparkle-p4 { --dx: 48px;  --dy: -32px; --scale: 1.15; color: var(--primary-color); animation-delay: 0.02s; }
+.sparkle-p5 { --dx: -52px; --dy: -28px; --scale: 0.9;  color: var(--accent-gold);   animation-delay: 0.06s; }
+.sparkle-p6 { --dx: 14px;  --dy: -56px; --scale: 1.2;  color: var(--accent-rose);   animation-delay: 0.05s; }
 
 #hint-box {
   background: var(--accent-gold-light);
@@ -487,6 +535,8 @@ body {
   color: var(--primary-color);
   line-height: 1.3;
   letter-spacing: 0.02em;
+  animation: epilogueLineIn 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s backwards;
+  will-change: transform, opacity;
 }
 
 #epilogue-message {
@@ -497,6 +547,29 @@ body {
   padding: 0 4px;
   white-space: pre-line;
   font-style: italic;
+}
+
+.epilogue-line {
+  display: block;
+  opacity: 0;
+  animation: epilogueLineIn 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  will-change: transform, opacity;
+  margin-bottom: 8px;
+}
+
+.epilogue-line:last-child {
+  margin-bottom: 0;
+}
+
+@keyframes epilogueLineIn {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ==========================================================================
@@ -608,7 +681,7 @@ body {
   border-radius: var(--radius-pill);
   box-shadow: 0 4px 14px rgba(184, 74, 91, 0.28);
   cursor: pointer;
-  transition: var(--transition-smooth);
+  transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease;
   animation: fadeInUp 0.4s ease-out;
 }
 
@@ -618,7 +691,7 @@ body {
 }
 
 .next-scene-btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
 /* ==========================================================================
@@ -637,6 +710,21 @@ body {
 
 .tab-panel.hidden {
   display: none !important;
+}
+
+.tab-panel.active {
+  animation: tabFadeIn 0.25s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Placeholder cho Tab Ảnh chung & Ghi chú */
@@ -1418,12 +1506,12 @@ body.edit-mode-active .profile-view-edit-btn {
   color: var(--text-muted);
   cursor: pointer;
   padding: 6px 0;
-  transition: var(--transition-smooth);
+  transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.2s ease;
   font-family: var(--font-sans);
 }
 
 .bottom-nav-item:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
 }
 
 .bottom-nav-item .nav-icon-wrapper {
@@ -1432,7 +1520,7 @@ body.edit-mode-active .profile-view-edit-btn {
   justify-content: center;
   width: 28px;
   height: 28px;
-  transition: transform 0.2s ease, color 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.2s ease;
 }
 
 .bottom-nav-item .nav-label {
@@ -1445,6 +1533,10 @@ body.edit-mode-active .profile-view-edit-btn {
 /* Trạng thái Active của tab thường */
 .bottom-nav-item.active {
   color: var(--primary-color);
+}
+
+.bottom-nav-item.active .nav-icon-wrapper {
+  transform: translateY(-2px) scale(1.08);
 }
 
 .bottom-nav-item.active .nav-label {

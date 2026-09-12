@@ -146,10 +146,14 @@ body {
   animation: fadeInUp 0.4s ease-out;
 }
 
-/* --- Dải tiến trình mini trang trí (#mini-progress-track) --- */
+/* --- Dải tiến trình mini (#mini-progress-track) — Hàng 1 độc lập trên cùng --- */
+/* Chiếm trọn bề ngang khả dụng ở cả #quiz-container và #epilogue-container */
 .mini-progress-container {
-  width: 100%;
-  max-width: 100%;
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  left: 18px;
+  right: 18px;
+  z-index: 10;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
@@ -159,7 +163,6 @@ body {
   -webkit-user-select: none;
   display: flex;
   align-items: center;
-  margin-bottom: 6px;
   padding: 2px 0;
   cursor: default;
 }
@@ -259,9 +262,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding-top: 4px;
+  padding-top: 36px; /* Chừa chỗ cho #mini-progress-track ở hàng 1 trên cùng */
   padding-bottom: 12px;
-  padding-right: 125px; /* Chừa khoảng trống an toàn cho cụm nút admin góc phải */
   border-bottom: 1px dashed rgba(229, 140, 153, 0.45);
   flex-shrink: 0;
 }
@@ -1696,7 +1698,7 @@ body.edit-mode-active .profile-view-edit-btn {
    ========================================================================== */
 .edit-controls-container {
   position: absolute;
-  top: max(12px, env(safe-area-inset-top));
+  top: calc(max(8px, env(safe-area-inset-top)) + 40px);
   right: max(12px, env(safe-area-inset-right));
   z-index: 50;
   display: flex;
@@ -2405,8 +2407,13 @@ body.edit-mode-active .profile-view-edit-btn {
    10. RESPONSIVE CHO MÀN HÌNH NHỎ (MOBILE <= 380px / 360px)
    ========================================================================== */
 @media (max-width: 380px) {
+  .mini-progress-container {
+    left: 12px;
+    right: 12px;
+  }
+
   .edit-controls-container {
-    top: 10px;
+    top: calc(max(6px, env(safe-area-inset-top)) + 38px);
     right: 10px;
     gap: 4px;
   }

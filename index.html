@@ -15,7 +15,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="./style.css?v=8">
+  <link rel="stylesheet" href="./style.css?v=10">
 </head>
 <body>
   <!-- Tab 1: Kỷ niệm / Hành trình (Chứa toàn bộ #scene-container hiện có) -->
@@ -33,11 +33,13 @@
         </button>
       </div>
 
+      <!-- Dải tiến trình mini — con trực tiếp của .scene-container, luôn hiện kể cả ở Epilogue -->
+      <div id="mini-progress-track" class="mini-progress-container" aria-hidden="true"></div>
+
       <!-- Khu vực hiển thị câu hỏi trắc nghiệm & tương tác (Scene 1-6 full-screen) -->
       <section id="quiz-container" class="scene-screen" aria-live="polite">
         <!-- Phần trên: Số đếm kỷ niệm + Tên kỷ niệm -->
         <header id="scene-info">
-          <div id="mini-progress-track" class="mini-progress-container" aria-hidden="true"></div>
           <span id="scene-indicator"></span>
           <h1 id="scene-title"></h1>
           <div id="review-controls" class="review-controls hidden">
@@ -618,9 +620,9 @@
   <script src="./data.js"></script>
 
   <!-- Firebase bridge (ES Module) -->
-  <script type="module" src="./firebase-bridge.js?v=8"></script>
+  <script type="module" src="./firebase-bridge.js?v=10"></script>
 
   <!-- Logic game -->
-  <script src="./main.js?v=8"></script>
+  <script src="./main.js?v=10"></script>
 </body>
 </html>

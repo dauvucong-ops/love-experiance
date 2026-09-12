@@ -51,6 +51,12 @@ window.__LJ_DELETE_GALLERY_ITEM = async function(firestoreId) {
   return await deleteDoc(docRef);
 };
 
+// Expose helper cập nhật hồ sơ trong collection "profiles" (Phase 3)
+window.__LJ_UPDATE_PROFILE = async function(personId, profileData) {
+  const docRef = doc(db, 'profiles', personId);
+  return await setDoc(docRef, profileData, { merge: true });
+};
+
 // ── Helper: đoán loại media từ đuôi file / URL ──────────────────────────────
 function detectMediaType(url) {
   if (!url) return null;
@@ -177,4 +183,24 @@ onSnapshot(
     console.warn('[LoveJourney] Firestore gallery error:', error.code, error.message);
   }
 );
+
+// ── onSnapshot listener cho collection "profiles" (Phase 3) ──────────────────
+const profilesQuery = collection(db, 'profiles');
+
+onSnapshot(
+  profilesQuery,
+  (snapshot) => {
+    const profiles = {};
+    snapshot.docs.forEach(doc => {
+      profiles[doc.id] = { id: doc.id, ...doc.data() };
+    });
+    window.dispatchEvent(
+      new CustomEvent('lj:profilesUpdated', { detail: { profiles } })
+    );
+  },
+  (error) => {
+    console.warn('[LoveJourney] Firestore profiles error:', error.code, error.message);
+  }
+);
+
 

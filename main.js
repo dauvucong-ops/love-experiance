@@ -100,6 +100,9 @@ class GameController {
     // Khởi tạo Album Ảnh chung (Gallery - Phase 2)
     this.initGallery();
 
+    // Khởi tạo Ghi chú về 2 người (Profiles - Phase 3)
+    this.initProfiles();
+
     // Đăng ký GSAP MotionPathPlugin
     if (typeof gsap !== 'undefined' && typeof MotionPathPlugin !== 'undefined') {
       gsap.registerPlugin(MotionPathPlugin);
@@ -1033,6 +1036,427 @@ class GameController {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // QUẢN LÝ GHI CHÚ VỀ 2 NGƯỜI (TAB NOTES / PROFILES - Phase 3)
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * Khởi tạo các tham chiếu DOM và sự kiện cho Tab Notes / Profiles
+   */
+  initProfiles() {
+    this.profilesData = { person1: null, person2: null };
+    this.currentViewingPersonId = null;
+
+    // Tham chiếu thẻ ngoài Tab Notes
+    this.profileCardPerson1 = document.getElementById('profile-card-person1');
+    this.profileCardPerson2 = document.getElementById('profile-card-person2');
+
+    // Tham chiếu Modal Xem Chi Tiết
+    this.profileViewModal     = document.getElementById('profile-view-modal');
+    this.profileViewModalTitle= document.getElementById('profile-view-modal-title');
+    this.profileViewCloseX    = document.getElementById('profile-view-close-x');
+    this.profileViewCloseBtn  = document.getElementById('profile-view-close-btn');
+    this.profileViewEditBtn   = document.getElementById('profile-view-edit-btn');
+    this.profileViewAvatar    = document.getElementById('profile-view-avatar');
+    this.profileViewAvatarFallback = document.getElementById('profile-view-avatar-fallback');
+    this.profileViewName      = document.getElementById('profile-view-name');
+    this.profileViewBirthday  = document.getElementById('profile-view-birthday');
+    this.profileViewPersonality = document.getElementById('profile-view-personality');
+    this.profileViewHobbies   = document.getElementById('profile-view-hobbies');
+    this.profileViewFood      = document.getElementById('profile-view-food');
+    this.profileViewDislikes  = document.getElementById('profile-view-dislikes');
+    this.profileViewNote      = document.getElementById('profile-view-note');
+
+    // Tham chiếu Modal Chỉnh Sửa
+    this.profileEditModal     = document.getElementById('profile-edit-modal');
+    this.profileEditForm      = document.getElementById('profile-edit-form');
+    this.profileEditCloseX    = document.getElementById('profile-edit-close-x');
+    this.profileEditCancelBtn = document.getElementById('profile-edit-cancel-btn');
+    this.profileEditSaveBtn   = document.getElementById('profile-edit-save-btn');
+    this.profileEditErrorMsg  = document.getElementById('profile-edit-error-msg');
+    this.profileEditPersonId  = document.getElementById('profile-edit-person-id');
+    this.profileEditName      = document.getElementById('profile-edit-name');
+    this.profileEditAvatarUrl = document.getElementById('profile-edit-avatar-url');
+    this.profileEditBirthday  = document.getElementById('profile-edit-birthday');
+    this.profileEditPersonality = document.getElementById('profile-edit-personality');
+    this.profileEditHobbies   = document.getElementById('profile-edit-hobbies');
+    this.profileEditFood      = document.getElementById('profile-edit-food');
+    this.profileEditDislikes  = document.getElementById('profile-edit-dislikes');
+    this.profileEditNote      = document.getElementById('profile-edit-note');
+    this.profileEditPin       = document.getElementById('profile-edit-pin');
+
+    // 1. Lắng nghe real-time event từ Firestore Bridge
+    window.addEventListener('lj:profilesUpdated', (e) => {
+      const profiles = e.detail?.profiles || {};
+      this.profilesData = profiles;
+      this.renderProfiles();
+
+      // Nếu đang mở modal xem chi tiết, cập nhật lại dữ liệu đang hiển thị
+      if (this.currentViewingPersonId && this.profileViewModal && !this.profileViewModal.classList.contains('hidden')) {
+        this.openProfileViewModal(this.currentViewingPersonId);
+      }
+    });
+
+    // 2. Click / Keyboard mở modal xem chi tiết của từng người
+    if (this.profileCardPerson1) {
+      this.profileCardPerson1.addEventListener('click', () => this.openProfileViewModal('person1'));
+      this.profileCardPerson1.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.openProfileViewModal('person1');
+        }
+      });
+    }
+
+    if (this.profileCardPerson2) {
+      this.profileCardPerson2.addEventListener('click', () => this.openProfileViewModal('person2'));
+      this.profileCardPerson2.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.openProfileViewModal('person2');
+        }
+      });
+    }
+
+    // 3. Sự kiện modal xem chi tiết
+    if (this.profileViewCloseX) {
+      this.profileViewCloseX.addEventListener('click', () => this.closeProfileViewModal());
+    }
+    if (this.profileViewCloseBtn) {
+      this.profileViewCloseBtn.addEventListener('click', () => this.closeProfileViewModal());
+    }
+    if (this.profileViewEditBtn) {
+      this.profileViewEditBtn.addEventListener('click', () => {
+        if (this.currentViewingPersonId) {
+          this.closeProfileViewModal();
+          this.openProfileEditModal(this.currentViewingPersonId);
+        }
+      });
+    }
+    if (this.profileViewModal) {
+      this.profileViewModal.addEventListener('click', (e) => {
+        if (e.target === this.profileViewModal) {
+          this.closeProfileViewModal();
+        }
+      });
+    }
+
+    // 4. Sự kiện modal chỉnh sửa
+    if (this.profileEditCloseX) {
+      this.profileEditCloseX.addEventListener('click', () => this.closeProfileEditModal());
+    }
+    if (this.profileEditCancelBtn) {
+      this.profileEditCancelBtn.addEventListener('click', () => this.closeProfileEditModal());
+    }
+    if (this.profileEditForm) {
+      this.profileEditForm.addEventListener('submit', (e) => this.saveProfileEdit(e));
+    }
+    if (this.profileEditModal) {
+      this.profileEditModal.addEventListener('click', (e) => {
+        if (e.target === this.profileEditModal) {
+          this.closeProfileEditModal();
+        }
+      });
+    }
+
+    // Đóng modal khi nhấn Escape
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (this.profileEditModal && !this.profileEditModal.classList.contains('hidden')) {
+          this.closeProfileEditModal();
+        } else if (this.profileViewModal && !this.profileViewModal.classList.contains('hidden')) {
+          this.closeProfileViewModal();
+        }
+      }
+    });
+
+    // Render ban đầu với placeholder
+    this.renderProfiles();
+  }
+
+  /**
+   * Cập nhật thông tin trên 2 thẻ hồ sơ ở Tab Notes
+   */
+  renderProfiles() {
+    this._renderProfileCard('person1', 'Người thương 1');
+    this._renderProfileCard('person2', 'Người thương 2');
+  }
+
+  /**
+   * Helper render từng thẻ hồ sơ
+   * @param {'person1' | 'person2'} personId
+   * @param {string} fallbackDefaultName
+   */
+  _renderProfileCard(personId, fallbackDefaultName) {
+    const p = (this.profilesData && this.profilesData[personId]) || {};
+    const nameEl = document.getElementById(`profile-card-name-${personId}`);
+    const metaEl = document.getElementById(`profile-card-meta-${personId}`);
+    const avatarEl = document.getElementById(`profile-card-avatar-${personId}`);
+    const fallbackEl = document.getElementById(`profile-card-avatar-fallback-${personId}`);
+
+    const displayName = (p.name && p.name.trim()) ? p.name.trim() : fallbackDefaultName;
+    if (nameEl) nameEl.textContent = displayName;
+
+    if (metaEl) {
+      if (p.birthday && p.birthday.trim()) {
+        metaEl.textContent = `🎂 Sinh nhật: ${p.birthday.trim()}`;
+      } else {
+        metaEl.textContent = 'Chạm để xem chi tiết';
+      }
+    }
+
+    if (avatarEl && fallbackEl) {
+      const avatarUrl = p.avatarUrl ? p.avatarUrl.trim() : '';
+      if (avatarUrl) {
+        avatarEl.src = avatarUrl;
+        avatarEl.alt = displayName;
+        avatarEl.classList.remove('hidden');
+        fallbackEl.classList.add('hidden');
+        avatarEl.onerror = () => {
+          avatarEl.classList.add('hidden');
+          fallbackEl.classList.remove('hidden');
+        };
+      } else {
+        avatarEl.src = '';
+        avatarEl.classList.add('hidden');
+        fallbackEl.classList.remove('hidden');
+        fallbackEl.textContent = displayName.charAt(0).toUpperCase();
+      }
+    }
+  }
+
+  /**
+   * Mở modal xem chi tiết hồ sơ
+   * @param {'person1' | 'person2'} personId
+   */
+  openProfileViewModal(personId) {
+    if (!this.profileViewModal) return;
+    this.currentViewingPersonId = personId;
+
+    const p = (this.profilesData && this.profilesData[personId]) || {};
+    const defaultName = personId === 'person1' ? 'Người thương 1' : 'Người thương 2';
+    const displayName = (p.name && p.name.trim()) ? p.name.trim() : defaultName;
+
+    // Tên & Tiêu đề
+    if (this.profileViewModalTitle) {
+      this.profileViewModalTitle.textContent = `Hồ sơ ${displayName}`;
+    }
+    if (this.profileViewName) {
+      this.profileViewName.textContent = displayName;
+    }
+
+    // Avatar
+    if (this.profileViewAvatar && this.profileViewAvatarFallback) {
+      const avatarUrl = p.avatarUrl ? p.avatarUrl.trim() : '';
+      if (avatarUrl) {
+        this.profileViewAvatar.src = avatarUrl;
+        this.profileViewAvatar.alt = displayName;
+        this.profileViewAvatar.classList.remove('hidden');
+        this.profileViewAvatarFallback.classList.add('hidden');
+        this.profileViewAvatar.onerror = () => {
+          this.profileViewAvatar.classList.add('hidden');
+          this.profileViewAvatarFallback.classList.remove('hidden');
+        };
+      } else {
+        this.profileViewAvatar.src = '';
+        this.profileViewAvatar.classList.add('hidden');
+        this.profileViewAvatarFallback.classList.remove('hidden');
+        this.profileViewAvatarFallback.textContent = displayName.charAt(0).toUpperCase();
+      }
+    }
+
+    // Sinh nhật
+    if (this.profileViewBirthday) {
+      if (p.birthday && p.birthday.trim()) {
+        this.profileViewBirthday.textContent = p.birthday.trim();
+        this.profileViewBirthday.classList.remove('is-empty');
+      } else {
+        this.profileViewBirthday.textContent = 'Chưa cập nhật';
+        this.profileViewBirthday.classList.add('is-empty');
+      }
+    }
+
+    // Helper render các trường chi tiết (hiển thị 'Chưa cập nhật' in nghiêng nếu rỗng)
+    const setFieldValue = (el, val) => {
+      if (!el) return;
+      if (val && String(val).trim()) {
+        el.textContent = String(val).trim();
+        el.classList.remove('is-empty');
+      } else {
+        el.textContent = 'Chưa cập nhật';
+        el.classList.add('is-empty');
+      }
+    };
+
+    setFieldValue(this.profileViewPersonality, p.personality);
+    setFieldValue(this.profileViewHobbies, p.hobbies);
+    setFieldValue(this.profileViewFood, p.favoriteFood);
+    setFieldValue(this.profileViewDislikes, p.dislikes);
+
+    // Lời nhắn gửi (đặc biệt)
+    if (this.profileViewNote) {
+      if (p.noteForOther && String(p.noteForOther).trim()) {
+        this.profileViewNote.textContent = `“${String(p.noteForOther).trim()}”`;
+        this.profileViewNote.classList.remove('is-empty');
+      } else {
+        this.profileViewNote.textContent = 'Chưa cập nhật';
+        this.profileViewNote.classList.add('is-empty');
+      }
+    }
+
+    this.profileViewModal.classList.remove('hidden');
+  }
+
+  /**
+   * Đóng modal xem chi tiết hồ sơ
+   */
+  closeProfileViewModal() {
+    if (!this.profileViewModal) return;
+    this.profileViewModal.classList.add('hidden');
+  }
+
+  /**
+   * Mở modal chỉnh sửa hồ sơ
+   * @param {'person1' | 'person2'} personId
+   */
+  openProfileEditModal(personId) {
+    if (!this.profileEditModal) return;
+    this.currentViewingPersonId = personId;
+
+    const p = (this.profilesData && this.profilesData[personId]) || {};
+    const defaultName = personId === 'person1' ? 'Người thương 1' : 'Người thương 2';
+
+    if (this.profileEditPersonId) this.profileEditPersonId.value = personId;
+    if (this.profileEditName) this.profileEditName.value = p.name || (p.name === '' ? '' : (p.name ? p.name : defaultName));
+    if (this.profileEditAvatarUrl) this.profileEditAvatarUrl.value = p.avatarUrl || '';
+    if (this.profileEditBirthday) this.profileEditBirthday.value = p.birthday || '';
+    if (this.profileEditPersonality) this.profileEditPersonality.value = p.personality || '';
+    if (this.profileEditHobbies) this.profileEditHobbies.value = p.hobbies || '';
+    if (this.profileEditFood) this.profileEditFood.value = p.favoriteFood || '';
+    if (this.profileEditDislikes) this.profileEditDislikes.value = p.dislikes || '';
+    if (this.profileEditNote) this.profileEditNote.value = p.noteForOther || '';
+    if (this.profileEditPin) {
+      this.profileEditPin.value = window.APP_CONFIG?.adminPin ? String(window.APP_CONFIG.adminPin).trim() : '';
+    }
+
+    this.hideProfileEditError();
+    this.profileEditModal.classList.remove('hidden');
+    setTimeout(() => {
+      if (this.profileEditName) this.profileEditName.focus();
+    }, 150);
+  }
+
+  /**
+   * Đóng modal chỉnh sửa hồ sơ
+   */
+  closeProfileEditModal() {
+    if (!this.profileEditModal) return;
+    this.profileEditModal.classList.add('hidden');
+    this.hideProfileEditError();
+  }
+
+  showProfileEditError(msg) {
+    if (this.profileEditErrorMsg) {
+      this.profileEditErrorMsg.textContent = msg;
+      this.profileEditErrorMsg.classList.remove('hidden');
+    }
+  }
+
+  hideProfileEditError() {
+    if (this.profileEditErrorMsg) {
+      this.profileEditErrorMsg.textContent = '';
+      this.profileEditErrorMsg.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Lưu thay đổi hồ sơ vào Firestore collection "profiles"
+   * @param {Event} e
+   */
+  async saveProfileEdit(e) {
+    e.preventDefault();
+    this.hideProfileEditError();
+
+    const personId = this.profileEditPersonId ? this.profileEditPersonId.value.trim() : '';
+    if (!personId || (personId !== 'person1' && personId !== 'person2')) {
+      this.showProfileEditError('Hồ sơ không hợp lệ.');
+      return;
+    }
+
+    const name = this.profileEditName ? this.profileEditName.value.trim() : '';
+    if (!name) {
+      this.showProfileEditError('Vui lòng nhập Tên / Biệt danh.');
+      if (this.profileEditName) this.profileEditName.focus();
+      return;
+    }
+
+    const avatarUrl = this.profileEditAvatarUrl ? this.profileEditAvatarUrl.value.trim() : '';
+    if (avatarUrl && !avatarUrl.startsWith('http://') && !avatarUrl.startsWith('https://')) {
+      this.showProfileEditError('Link ảnh đại diện phải bắt đầu bằng http:// hoặc https://.');
+      if (this.profileEditAvatarUrl) this.profileEditAvatarUrl.focus();
+      return;
+    }
+
+    const enteredPin = this.profileEditPin ? this.profileEditPin.value.trim() : '';
+    const configuredPin = window.APP_CONFIG?.adminPin ? String(window.APP_CONFIG.adminPin).trim() : '';
+    if (!enteredPin) {
+      this.showProfileEditError('Vui lòng nhập mã PIN xác nhận (4 số).');
+      if (this.profileEditPin) this.profileEditPin.focus();
+      return;
+    }
+
+    if (configuredPin && enteredPin !== configuredPin) {
+      this.showProfileEditError('Mã PIN không chính xác. Vui lòng thử lại.');
+      if (this.profileEditPin) this.profileEditPin.focus();
+      return;
+    }
+
+    const payload = {
+      name: name,
+      avatarUrl: avatarUrl || '',
+      birthday: this.profileEditBirthday ? this.profileEditBirthday.value.trim() : '',
+      personality: this.profileEditPersonality ? this.profileEditPersonality.value.trim() : '',
+      hobbies: this.profileEditHobbies ? this.profileEditHobbies.value.trim() : '',
+      favoriteFood: this.profileEditFood ? this.profileEditFood.value.trim() : '',
+      dislikes: this.profileEditDislikes ? this.profileEditDislikes.value.trim() : '',
+      noteForOther: this.profileEditNote ? this.profileEditNote.value.trim() : '',
+      pin: enteredPin,
+      updatedAt: Date.now()
+    };
+
+    if (this.profileEditSaveBtn) {
+      this.profileEditSaveBtn.disabled = true;
+      this.profileEditSaveBtn.textContent = 'Đang lưu...';
+    }
+
+    try {
+      if (typeof window.__LJ_UPDATE_PROFILE !== 'function') {
+        throw new Error('Chức năng lưu hồ sơ chưa sẵn sàng. Vui lòng kiểm tra kết nối mạng.');
+      }
+
+      await window.__LJ_UPDATE_PROFILE(personId, payload);
+      console.log(`[LoveJourney] Đã cập nhật hồ sơ ${personId} thành công.`);
+      this.closeProfileEditModal();
+
+      // Mở lại modal xem chi tiết với dữ liệu mới
+      this.openProfileViewModal(personId);
+    } catch (err) {
+      console.warn('[LoveJourney] Lỗi cập nhật hồ sơ:', err);
+      let errorText = 'Lỗi lưu hồ sơ: ';
+      if (err && err.code === 'permission-denied') {
+        errorText += 'Không có quyền ghi (mã PIN không khớp Security Rules).';
+      } else {
+        errorText += (err.message || 'Vui lòng thử lại sau.');
+      }
+      this.showProfileEditError(errorText);
+    } finally {
+      if (this.profileEditSaveBtn) {
+        this.profileEditSaveBtn.disabled = false;
+        this.profileEditSaveBtn.textContent = 'Lưu thay đổi';
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // QUẢN LÝ CHẾ ĐỘ CHỈNH SỬA & XÁC THỰC PIN
   // ══════════════════════════════════════════════════════════════
 
@@ -1222,6 +1646,7 @@ class GameController {
         this.galleryAddBtn.classList.add('hidden');
       }
       this.closeAddPhotoModal();
+      this.closeProfileEditModal();
     }
   }
 

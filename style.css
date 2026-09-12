@@ -992,6 +992,333 @@ body:not(.edit-mode-active) .gallery-delete-btn {
   border-radius: var(--radius-sm);
 }
 
+/* ==========================================================================
+   TAB NOTES: GHI CHÚ VỀ 2 NGƯỜI / PROFILES (Phase 3)
+   ========================================================================== */
+.profiles-container {
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: max(16px, env(safe-area-inset-top)) 16px calc(max(24px, env(safe-area-inset-bottom)) + var(--bottom-nav-height)) 16px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  background: transparent;
+}
+
+.profiles-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+  border-bottom: 1px dashed rgba(229, 140, 153, 0.45);
+  flex-shrink: 0;
+}
+
+.profiles-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--primary-color);
+  background: rgba(184, 74, 91, 0.08);
+  border: 1px solid rgba(184, 74, 91, 0.2);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  margin-bottom: 6px;
+}
+
+.profiles-title {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  line-height: 1.25;
+  margin-bottom: 4px;
+}
+
+.profiles-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  line-height: 1.4;
+}
+
+/* Danh sách 2 thẻ Profile kết nối */
+.profiles-cards-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  align-items: stretch;
+}
+
+.profile-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1.5px solid rgba(229, 140, 153, 0.4);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 4px 16px rgba(184, 74, 91, 0.06);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-rose);
+  box-shadow: 0 6px 20px rgba(184, 74, 91, 0.12);
+}
+
+.profile-card:active {
+  transform: scale(0.98);
+}
+
+.profile-card-avatar-wrapper {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(229, 140, 153, 0.6);
+  flex-shrink: 0;
+  background: rgba(184, 74, 91, 0.05);
+  box-shadow: 0 2px 8px rgba(184, 74, 91, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-card-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-card-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  background: rgba(184, 74, 91, 0.08);
+}
+
+.profile-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-card-name {
+  font-family: var(--font-serif);
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+
+.profile-card-meta {
+  font-size: 0.78rem;
+  color: var(--text-light);
+  line-height: 1.3;
+}
+
+.profile-card-arrow {
+  color: var(--text-light);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.profile-card:hover .profile-card-arrow {
+  color: var(--primary-color);
+  transform: translateX(3px);
+}
+
+/* Biểu tượng trái tim kết nối giữa 2 thẻ */
+.profiles-connecting-heart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-rose);
+  padding: 2px 0;
+  animation: pulseHeart 2s infinite ease-in-out;
+}
+
+@keyframes pulseHeart {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+}
+
+/* Modal Xem Chi Tiết Hồ Sơ (#profile-view-modal) */
+.profile-modal-card {
+  max-width: 440px;
+  max-height: 90vh;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+.profile-view-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.profile-view-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed rgba(229, 140, 153, 0.4);
+}
+
+.profile-view-avatar-wrap {
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid rgba(229, 140, 153, 0.6);
+  box-shadow: 0 4px 14px rgba(184, 74, 91, 0.16);
+  margin-bottom: 10px;
+  background: rgba(184, 74, 91, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-view-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-view-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  background: rgba(184, 74, 91, 0.08);
+}
+
+.profile-view-name {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 4px;
+}
+
+.profile-view-birthday-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text-main);
+  background: rgba(184, 74, 91, 0.06);
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+}
+
+.profile-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-info-item {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(229, 140, 153, 0.35);
+  border-radius: var(--radius-md);
+  padding: 9px 12px;
+}
+
+.profile-info-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--primary-color);
+  margin-bottom: 4px;
+}
+
+.profile-item-icon {
+  font-size: 0.85rem;
+}
+
+.profile-info-val {
+  font-size: 0.88rem;
+  color: var(--text-main);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.profile-info-val.is-empty {
+  font-style: italic;
+  color: var(--text-light);
+}
+
+.profile-info-item-note {
+  background: rgba(254, 240, 242, 0.65);
+  border-color: rgba(229, 140, 153, 0.5);
+}
+
+.profile-note-val {
+  font-size: 0.9rem;
+  color: var(--primary-color);
+  font-style: italic;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.profile-note-val.is-empty {
+  color: var(--text-light);
+  font-style: italic;
+}
+
+/* Nút sửa hồ sơ trong modal chi tiết chỉ hiện khi edit mode đang bật */
+.profile-view-edit-btn {
+  display: none !important;
+}
+
+body.edit-mode-active .profile-view-edit-btn {
+  display: inline-flex !important;
+}
+
 /* --- Bottom Navigation Bar --- */
 .bottom-nav {
   position: fixed;

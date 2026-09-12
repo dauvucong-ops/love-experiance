@@ -120,20 +120,59 @@
     </div>
   </div>
 
-  <!-- Tab 3: Ghi chú về 2 người (Placeholder) -->
+  <!-- Tab 3: Ghi chú về 2 người (Profiles) -->
   <div id="tab-notes" class="tab-panel hidden">
-    <div class="tab-placeholder-content">
-      <div class="tab-placeholder-icon">
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
+    <div class="profiles-container">
+      <!-- Header của Profiles -->
+      <header class="profiles-header">
+        <span class="profiles-badge">Hồ sơ</span>
+        <h2 class="profiles-title">Ghi chú về hai người</h2>
+        <p class="profiles-subtitle">Chạm vào hồ sơ để xem chi tiết hoặc chỉnh sửa</p>
+      </header>
+
+      <!-- 2 Thẻ Profile Lớn -->
+      <div class="profiles-cards-wrapper">
+        <!-- Thẻ người thứ nhất (person1) -->
+        <div class="profile-card" id="profile-card-person1" role="button" tabindex="0" aria-label="Xem hồ sơ người thứ nhất">
+          <div class="profile-card-avatar-wrapper">
+            <img id="profile-card-avatar-person1" class="profile-card-avatar hidden" src="" alt="Avatar" />
+            <div id="profile-card-avatar-fallback-person1" class="profile-card-avatar-fallback">?</div>
+          </div>
+          <div class="profile-card-content">
+            <h3 class="profile-card-name" id="profile-card-name-person1">Người thương 1</h3>
+            <span class="profile-card-meta" id="profile-card-meta-person1">Chạm để xem chi tiết</span>
+          </div>
+          <div class="profile-card-arrow">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Trái tim kết nối ở giữa -->
+        <div class="profiles-connecting-heart" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+        </div>
+
+        <!-- Thẻ người thứ hai (person2) -->
+        <div class="profile-card" id="profile-card-person2" role="button" tabindex="0" aria-label="Xem hồ sơ người thứ hai">
+          <div class="profile-card-avatar-wrapper">
+            <img id="profile-card-avatar-person2" class="profile-card-avatar hidden" src="" alt="Avatar" />
+            <div id="profile-card-avatar-fallback-person2" class="profile-card-avatar-fallback">?</div>
+          </div>
+          <div class="profile-card-content">
+            <h3 class="profile-card-name" id="profile-card-name-person2">Người thương 2</h3>
+            <span class="profile-card-meta" id="profile-card-meta-person2">Chạm để xem chi tiết</span>
+          </div>
+          <div class="profile-card-arrow">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </div>
+        </div>
       </div>
-      <h2 class="tab-placeholder-title">Ghi chú về 2 người</h2>
-      <p class="tab-placeholder-desc">Tính năng đang được phát triển</p>
     </div>
   </div>
 
@@ -361,6 +400,155 @@
         <div class="edit-modal-actions">
           <button type="button" id="add-photo-cancel-btn" class="pin-btn pin-btn-cancel">Huỷ</button>
           <button type="submit" id="add-photo-save-btn" class="pin-btn pin-btn-confirm">Thêm</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Xem Chi Tiết Hồ Sơ (#profile-view-modal) -->
+  <div id="profile-view-modal" class="pin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="profile-view-name">
+    <div class="pin-modal-card profile-modal-card">
+      <div class="edit-modal-header">
+        <h3 id="profile-view-modal-title">Hồ sơ cá nhân</h3>
+        <button type="button" id="profile-view-close-x" class="edit-modal-close-x" aria-label="Đóng">&times;</button>
+      </div>
+
+      <div class="profile-view-body">
+        <!-- Avatar & Tên & Sinh nhật -->
+        <div class="profile-view-hero">
+          <div class="profile-view-avatar-wrap">
+            <img id="profile-view-avatar" class="profile-view-avatar hidden" src="" alt="Avatar" />
+            <div id="profile-view-avatar-fallback" class="profile-view-avatar-fallback">?</div>
+          </div>
+          <h2 id="profile-view-name" class="profile-view-name">Họ và tên</h2>
+          <div id="profile-view-birthday-wrap" class="profile-view-birthday-wrap">
+            <span class="profile-view-icon">🎂</span>
+            <span id="profile-view-birthday">Chưa cập nhật</span>
+          </div>
+        </div>
+
+        <!-- Danh sách chi tiết các trường -->
+        <div class="profile-info-list">
+          <div class="profile-info-item">
+            <div class="profile-info-label">
+              <span class="profile-item-icon">✨</span>
+              <span>Tính cách</span>
+            </div>
+            <div class="profile-info-val" id="profile-view-personality">Chưa cập nhật</div>
+          </div>
+
+          <div class="profile-info-item">
+            <div class="profile-info-label">
+              <span class="profile-item-icon">🎨</span>
+              <span>Sở thích</span>
+            </div>
+            <div class="profile-info-val" id="profile-view-hobbies">Chưa cập nhật</div>
+          </div>
+
+          <div class="profile-info-item">
+            <div class="profile-info-label">
+              <span class="profile-item-icon">🍰</span>
+              <span>Món yêu thích</span>
+            </div>
+            <div class="profile-info-val" id="profile-view-food">Chưa cập nhật</div>
+          </div>
+
+          <div class="profile-info-item">
+            <div class="profile-info-label">
+              <span class="profile-item-icon">⚡</span>
+              <span>Điều không thích</span>
+            </div>
+            <div class="profile-info-val" id="profile-view-dislikes">Chưa cập nhật</div>
+          </div>
+
+          <div class="profile-info-item profile-info-item-note">
+            <div class="profile-info-label">
+              <span class="profile-item-icon">💌</span>
+              <span>Lời nhắn gửi</span>
+            </div>
+            <div class="profile-note-val" id="profile-view-note">Chưa cập nhật</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action: Nút Chỉnh sửa (chỉ hiện khi Edit Mode đang bật) & Đóng -->
+      <div class="edit-modal-actions profile-view-actions">
+        <button type="button" id="profile-view-close-btn" class="pin-btn pin-btn-cancel">Đóng</button>
+        <button type="button" id="profile-view-edit-btn" class="pin-btn pin-btn-confirm profile-view-edit-btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+          Sửa hồ sơ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Chỉnh Sửa Hồ Sơ (#profile-edit-modal) -->
+  <div id="profile-edit-modal" class="pin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="profile-edit-modal-title">
+    <div class="pin-modal-card edit-scene-modal-card">
+      <div class="edit-modal-header">
+        <h3 id="profile-edit-modal-title">Chỉnh sửa hồ sơ</h3>
+        <button type="button" id="profile-edit-close-x" class="edit-modal-close-x" aria-label="Đóng">&times;</button>
+      </div>
+
+      <form id="profile-edit-form" class="edit-scene-form" novalidate>
+        <input type="hidden" id="profile-edit-person-id" value="" />
+
+        <div class="form-group">
+          <label for="profile-edit-name">Tên / Biệt danh <span class="req">*</span></label>
+          <input type="text" id="profile-edit-name" placeholder="VD: Anh yêu / Em yêu..." required />
+        </div>
+
+        <div class="form-group">
+          <label for="profile-edit-avatar-url">Link ảnh đại diện</label>
+          <input type="url" id="profile-edit-avatar-url" placeholder="Dán link ảnh (VD: https://...)" />
+        </div>
+
+        <div class="form-group">
+          <label for="profile-edit-birthday">Ngày sinh</label>
+          <input type="text" id="profile-edit-birthday" placeholder="VD: 20/10/2000 hoặc 20 tháng 10" />
+        </div>
+
+        <div class="form-group">
+          <label for="profile-edit-personality">Tính cách</label>
+          <input type="text" id="profile-edit-personality" placeholder="VD: Chu đáo, hay cười, dễ dỗi..." />
+        </div>
+
+        <div class="form-group">
+          <label for="profile-edit-hobbies">Sở thích</label>
+          <input type="text" id="profile-edit-hobbies" placeholder="VD: Nghe nhạc, đi cafe, chụp ảnh..." />
+        </div>
+
+        <div class="form-group">
+          <label for="profile-edit-food">Món yêu thích</label>
+          <input type="text" id="profile-edit-food" placeholder="VD: Trà sữa ít đường, bún đậu mắm tôm..." />
+        </div>
+
+        <div class="form-group">
+          <label for="profile-edit-dislikes">Điều không thích</label>
+          <input type="text" id="profile-edit-dislikes" placeholder="VD: Trễ hẹn, trời mưa to, bị lạnh..." />
+        </div>
+
+        <div class="form-group">
+          <label for="profile-edit-note">Lời nhắn gửi cho đối phương</label>
+          <textarea id="profile-edit-note" rows="3" placeholder="Lời nhắn gửi yêu thương dành cho nhau..."></textarea>
+        </div>
+
+        <!-- Mã PIN bảo mật -->
+        <div class="form-group">
+          <label for="profile-edit-pin">Mã PIN xác nhận <span class="req">*</span></label>
+          <input type="password" id="profile-edit-pin" placeholder="Nhập mã PIN 4 số" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" required />
+        </div>
+
+        <!-- Thông báo lỗi -->
+        <div id="profile-edit-error-msg" class="pin-error-msg hidden"></div>
+
+        <!-- Các nút thao tác -->
+        <div class="edit-modal-actions">
+          <button type="button" id="profile-edit-cancel-btn" class="pin-btn pin-btn-cancel">Huỷ</button>
+          <button type="submit" id="profile-edit-save-btn" class="pin-btn pin-btn-confirm">Lưu thay đổi</button>
         </div>
       </form>
     </div>

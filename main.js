@@ -1150,7 +1150,7 @@ class GameController {
       });
     }
 
-    // 4. Sự kiện modal chỉnh sửa
+    // 4. Sự kiện modal chỉnh sửa (chỉ đóng bằng nút X hoặc nút Huỷ, không đóng khi click ra ngoài hay bấm Escape)
     if (this.profileEditCloseX) {
       this.profileEditCloseX.addEventListener('click', () => this.closeProfileEditModal());
     }
@@ -1159,13 +1159,6 @@ class GameController {
     }
     if (this.profileEditForm) {
       this.profileEditForm.addEventListener('submit', (e) => this.saveProfileEdit(e));
-    }
-    if (this.profileEditModal) {
-      this.profileEditModal.addEventListener('click', (e) => {
-        if (e.target === this.profileEditModal) {
-          this.closeProfileEditModal();
-        }
-      });
     }
 
     // 5. Sự kiện thêm tag cho 4 trường danh sách (nút Thêm & phím Enter)
@@ -1190,12 +1183,10 @@ class GameController {
       }
     });
 
-    // Đóng modal khi nhấn Escape
+    // Đóng modal xem chi tiết khi nhấn Escape (chỉ áp dụng cho modal xem, không đóng modal sửa đang nhập liệu)
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        if (this.profileEditModal && !this.profileEditModal.classList.contains('hidden')) {
-          this.closeProfileEditModal();
-        } else if (this.profileViewModal && !this.profileViewModal.classList.contains('hidden')) {
+        if (this.profileViewModal && !this.profileViewModal.classList.contains('hidden')) {
           this.closeProfileViewModal();
         }
       }

@@ -16,14 +16,16 @@
 <body>
   <!-- Container cho toàn bộ cảnh / viewport -->
   <main class="scene-container">
-    <!-- Nút bật chế độ chỉnh sửa (nhỏ gọn, không cản trở game) -->
-    <button id="edit-mode-btn" type="button" aria-label="Bật chế độ chỉnh sửa" title="Bật chế độ chỉnh sửa">
-      <svg class="edit-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-      </svg>
-      <span id="edit-badge" class="edit-badge hidden">Đang chỉnh sửa</span>
-    </button>
+    <!-- Khu vực nút điều khiển chế độ chỉnh sửa (góc trên phải) -->
+    <div id="edit-controls-container" class="edit-controls-container">
+      <button id="edit-mode-btn" type="button" aria-label="Bật chế độ chỉnh sửa" title="Bật chế độ chỉnh sửa">
+        <svg class="edit-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+        <span id="edit-badge" class="edit-badge hidden">Đang chỉnh sửa</span>
+      </button>
+    </div>
 
     <!-- Khu vực bản đồ / SVG Path & Nhân vật -->
     <div id="map-container">
@@ -90,6 +92,83 @@
         <button type="button" id="pin-cancel-btn" class="pin-btn pin-btn-cancel">Huỷ</button>
         <button type="button" id="pin-confirm-btn" class="pin-btn pin-btn-confirm">Xác nhận</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal Chỉnh sửa Kỷ niệm (Scene Edit Form) -->
+  <div id="edit-scene-modal" class="pin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="edit-scene-modal-title">
+    <div class="pin-modal-card edit-scene-modal-card">
+      <div class="edit-modal-header">
+        <h3 id="edit-scene-modal-title">Chỉnh sửa kỷ niệm</h3>
+        <button type="button" id="edit-scene-close-x" class="edit-modal-close-x" aria-label="Đóng">&times;</button>
+      </div>
+
+      <form id="edit-scene-form" class="edit-scene-form" novalidate>
+        <!-- Field isEpilogue (disabled/readonly) -->
+        <div class="form-group form-group-checkbox">
+          <label class="checkbox-label">
+            <input type="checkbox" id="edit-is-epilogue" disabled />
+            <span>Đây là cảnh Hồi kết (Epilogue)</span>
+          </label>
+        </div>
+
+        <!-- Nhóm trường cho scene bình thường (1-6) -->
+        <div id="edit-quiz-fields">
+          <div class="form-group">
+            <label for="edit-journal-entry">Đoạn nhật ký <span class="req">*</span></label>
+            <textarea id="edit-journal-entry" rows="3" placeholder="Nhập đoạn hồi tưởng cảm xúc trước khi hiện câu hỏi..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-question">Câu hỏi trắc nghiệm <span class="req">*</span></label>
+            <input type="text" id="edit-question" placeholder="Nhập câu hỏi trắc nghiệm..." />
+          </div>
+
+          <div class="form-group">
+            <label>4 Lựa chọn trắc nghiệm <span class="req">*</span></label>
+            <div class="options-inputs-grid">
+              <input type="text" id="edit-option-0" class="edit-option-input" placeholder="Lựa chọn A..." />
+              <input type="text" id="edit-option-1" class="edit-option-input" placeholder="Lựa chọn B..." />
+              <input type="text" id="edit-option-2" class="edit-option-input" placeholder="Lựa chọn C..." />
+              <input type="text" id="edit-option-3" class="edit-option-input" placeholder="Lựa chọn D..." />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-correct-answer">Đáp án đúng <span class="req">*</span></label>
+            <select id="edit-correct-answer">
+              <option value="">-- Chọn đáp án đúng từ 4 lựa chọn trên --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-hint">Gợi ý khi trả lời sai <span class="req">*</span></label>
+            <input type="text" id="edit-hint" placeholder="Nhập gợi ý khi trả lời sai..." />
+          </div>
+        </div>
+
+        <!-- Nhóm trường riêng cho Epilogue -->
+        <div id="edit-epilogue-fields" class="hidden">
+          <div class="form-group">
+            <label for="edit-epilogue-message">Lời nhắn kết thúc (Epilogue Message) <span class="req">*</span></label>
+            <textarea id="edit-epilogue-message" rows="4" placeholder="Nhập lời nhắn gửi gắm ở cảnh kết..."></textarea>
+          </div>
+        </div>
+
+        <!-- Trường mediaUrl chung cho mọi scene -->
+        <div class="form-group">
+          <label for="edit-media-url">Link Media sau mở khóa (Ảnh / Audio)</label>
+          <input type="text" id="edit-media-url" placeholder="dán link ảnh/audio online (VD: https://...)" />
+        </div>
+
+        <!-- Thông báo lỗi -->
+        <div id="edit-scene-error-msg" class="pin-error-msg hidden"></div>
+
+        <div class="edit-modal-actions">
+          <button type="button" id="edit-scene-cancel-btn" class="pin-btn pin-btn-cancel">Huỷ</button>
+          <button type="submit" id="edit-scene-save-btn" class="pin-btn pin-btn-confirm">Lưu</button>
+        </div>
+      </form>
     </div>
   </div>
 

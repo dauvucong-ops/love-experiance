@@ -17,15 +17,21 @@
 
 import { initializeApp }
   from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js';
-import { getFirestore, collection, query, orderBy, onSnapshot }
+import { getFirestore, collection, query, orderBy, onSnapshot, doc, setDoc }
   from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js';
 
 // ── Khởi tạo Firebase ───────────────────────────────────────────────────────
 const app = initializeApp(window.FIREBASE_CONFIG);
 const db  = getFirestore(app);
 
-// Expose để migrate.html và admin UI dùng ở phase sau
+// Expose để admin UI dùng để ghi dữ liệu
 window.__LJ_DB = db;
+
+// Expose helper ghi/cập nhật scene lên Firestore (merge: true)
+window.__LJ_UPDATE_SCENE = async function(firestoreId, sceneData) {
+  const docRef = doc(db, 'memories', firestoreId);
+  return await setDoc(docRef, sceneData, { merge: true });
+};
 
 // ── Helper: đoán loại media từ đuôi file / URL ──────────────────────────────
 function detectMediaType(url) {
@@ -41,6 +47,7 @@ function docToScene(doc) {
   return {
     firestoreId:     doc.id,                          // dùng cho ghi/sửa sau này
     id:              d.order,
+    isEpilogue:      Boolean(d.isEpilogue),
     sceneName:       d.sceneName || (d.isEpilogue
                        ? 'Hồi kết'
                        : `Kỷ niệm ${d.order}`),
@@ -50,6 +57,7 @@ function docToScene(doc) {
     options:         d.isEpilogue ? null : (d.options      ?? null),
     correctAnswer:   d.isEpilogue ? null : (d.correctAnswer ?? null),
     hint:            d.isEpilogue ? null : (d.hint          ?? null),
+    mediaUrl:        d.mediaUrl || null,
     mediaAfterUnlock: { type: mediaType, src: d.mediaUrl || null },
     epilogueMessage: d.isEpilogue ? (d.epilogueMessage ?? '') : null
     // Trường `pin` trong Firestore bị bỏ qua ở đây

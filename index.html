@@ -14,70 +14,143 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/MotionPathPlugin.min.js"></script>
 </head>
 <body>
-  <!-- Container cho toàn bộ cảnh / viewport -->
-  <main class="scene-container">
-    <!-- Khu vực nút điều khiển chế độ chỉnh sửa (góc trên phải) -->
-    <div id="edit-controls-container" class="edit-controls-container">
-      <button id="edit-mode-btn" type="button" aria-label="Bật chế độ chỉnh sửa" title="Bật chế độ chỉnh sửa">
-        <svg class="edit-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+  <!-- Tab 1: Kỷ niệm / Hành trình (Chứa toàn bộ #scene-container hiện có) -->
+  <div id="tab-journey" class="tab-panel active">
+    <!-- Container cho toàn bộ cảnh / viewport -->
+    <main class="scene-container">
+      <!-- Khu vực nút điều khiển chế độ chỉnh sửa (góc trên phải) -->
+      <div id="edit-controls-container" class="edit-controls-container">
+        <button id="edit-mode-btn" type="button" aria-label="Bật chế độ chỉnh sửa" title="Bật chế độ chỉnh sửa">
+          <svg class="edit-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+          <span id="edit-badge" class="edit-badge hidden">Đang chỉnh sửa</span>
+        </button>
+      </div>
+
+      <!-- Khu vực bản đồ / SVG Path & Nhân vật -->
+      <div id="map-container">
+        <svg id="journey-svg" viewBox="0 0 1000 600" xmlns="http://www.w3.org/2000/svg">
+          <!-- Đường dẫn (Path) mẫu kết nối 7 điểm mốc -->
+          <path id="journey-path" d="" fill="none" stroke="transparent" />
+          
+          <!-- Nhân vật di chuyển dọc path -->
+          <g id="character">
+            <!-- Placeholder hình nhân vật -->
+          </g>
         </svg>
-        <span id="edit-badge" class="edit-badge hidden">Đang chỉnh sửa</span>
+      </div>
+
+      <!-- Khu vực hiển thị câu hỏi trắc nghiệm & tương tác (Scene 1-6 full-screen) -->
+      <section id="quiz-container" class="scene-screen" aria-live="polite">
+        <!-- Phần trên: Số đếm kỷ niệm + Tên kỷ niệm -->
+        <header id="scene-info">
+          <span id="scene-indicator"></span>
+          <h1 id="scene-title"></h1>
+        </header>
+
+        <!-- Khối nhật ký kỷ niệm trước khi hiện câu hỏi -->
+        <div id="journal-container">
+          <p id="journal-text"></p>
+          <button id="continue-btn" type="button">Tiếp tục</button>
+        </div>
+
+        <div id="question-box" class="hidden">
+          <div id="question-progress" class="question-progress hidden"></div>
+          <p id="question-text"></p>
+          <div id="options-list"></div>
+        </div>
+
+        <div id="hint-box" class="hidden">
+          <p id="hint-text"></p>
+        </div>
+
+        <div id="feedback-message" class="hidden"></div>
+
+        <!-- Khu vực hiển thị media sau khi mở khóa scene -->
+        <div id="media-container" class="hidden"></div>
+      </section>
+
+      <!-- Khu vực hiển thị kết bài (Epilogue - Scene 7 full-screen) -->
+      <section id="epilogue-container" class="scene-screen hidden">
+        <div id="epilogue-content">
+          <h2 id="epilogue-title"></h2>
+          <p id="epilogue-message"></p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Tab 2: Ảnh chung (Placeholder) -->
+  <div id="tab-gallery" class="tab-panel hidden">
+    <div class="tab-placeholder-content">
+      <div class="tab-placeholder-icon">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+          <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+      </div>
+      <h2 class="tab-placeholder-title">Ảnh chung</h2>
+      <p class="tab-placeholder-desc">Tính năng đang được phát triển</p>
+    </div>
+  </div>
+
+  <!-- Tab 3: Ghi chú về 2 người (Placeholder) -->
+  <div id="tab-notes" class="tab-panel hidden">
+    <div class="tab-placeholder-content">
+      <div class="tab-placeholder-icon">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+      </div>
+      <h2 class="tab-placeholder-title">Ghi chú về 2 người</h2>
+      <p class="tab-placeholder-desc">Tính năng đang được phát triển</p>
+    </div>
+  </div>
+
+  <!-- Thanh Điều Hướng Cố Định Đáy (Bottom Navigation Bar) -->
+  <nav id="bottom-nav" class="bottom-nav" aria-label="Thanh điều hướng chính">
+    <div class="bottom-nav-inner">
+      <button type="button" class="bottom-nav-item" id="nav-btn-gallery" data-tab="gallery" aria-label="Ảnh chung" aria-selected="false">
+        <div class="nav-icon-wrapper">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+        </div>
+        <span class="nav-label">Ảnh chung</span>
+      </button>
+
+      <button type="button" class="bottom-nav-item nav-item-journey active" id="nav-btn-journey" data-tab="journey" aria-label="Hành trình" aria-selected="true">
+        <div class="nav-journey-circle">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+        </div>
+        <span class="nav-label">Hành trình</span>
+      </button>
+
+      <button type="button" class="bottom-nav-item" id="nav-btn-notes" data-tab="notes" aria-label="Ghi chú về 2 người" aria-selected="false">
+        <div class="nav-icon-wrapper">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+        </div>
+        <span class="nav-label">Ghi chú</span>
       </button>
     </div>
-
-    <!-- Khu vực bản đồ / SVG Path & Nhân vật -->
-    <div id="map-container">
-      <svg id="journey-svg" viewBox="0 0 1000 600" xmlns="http://www.w3.org/2000/svg">
-        <!-- Đường dẫn (Path) mẫu kết nối 7 điểm mốc -->
-        <path id="journey-path" d="" fill="none" stroke="transparent" />
-        
-        <!-- Nhân vật di chuyển dọc path -->
-        <g id="character">
-          <!-- Placeholder hình nhân vật -->
-        </g>
-      </svg>
-    </div>
-
-    <!-- Khu vực hiển thị câu hỏi trắc nghiệm & tương tác (Scene 1-6 full-screen) -->
-    <section id="quiz-container" class="scene-screen" aria-live="polite">
-      <!-- Phần trên: Số đếm kỷ niệm + Tên kỷ niệm -->
-      <header id="scene-info">
-        <span id="scene-indicator"></span>
-        <h1 id="scene-title"></h1>
-      </header>
-
-      <!-- Khối nhật ký kỷ niệm trước khi hiện câu hỏi -->
-      <div id="journal-container">
-        <p id="journal-text"></p>
-        <button id="continue-btn" type="button">Tiếp tục</button>
-      </div>
-
-      <div id="question-box" class="hidden">
-        <div id="question-progress" class="question-progress hidden"></div>
-        <p id="question-text"></p>
-        <div id="options-list"></div>
-      </div>
-
-      <div id="hint-box" class="hidden">
-        <p id="hint-text"></p>
-      </div>
-
-      <div id="feedback-message" class="hidden"></div>
-
-      <!-- Khu vực hiển thị media sau khi mở khóa scene -->
-      <div id="media-container" class="hidden"></div>
-    </section>
-
-    <!-- Khu vực hiển thị kết bài (Epilogue - Scene 7 full-screen) -->
-    <section id="epilogue-container" class="scene-screen hidden">
-      <div id="epilogue-content">
-        <h2 id="epilogue-title"></h2>
-        <p id="epilogue-message"></p>
-      </div>
-    </section>
-  </main>
+  </nav>
 
   <!-- Modal Nhập PIN Chế độ chỉnh sửa -->
   <div id="pin-modal" class="pin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pin-modal-title">

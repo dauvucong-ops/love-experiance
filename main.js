@@ -94,6 +94,9 @@ class GameController {
     // Khởi tạo cử chỉ vuốt chuyển cảnh (Swipe Navigation - Phase 2)
     this.initSwipeNavigation();
 
+    // Khởi tạo thanh điều hướng 3 tab cố định ở đáy (Bottom Navigation - Phase 1)
+    this.initBottomNav();
+
     // Đăng ký GSAP MotionPathPlugin
     if (typeof gsap !== 'undefined' && typeof MotionPathPlugin !== 'undefined') {
       gsap.registerPlugin(MotionPathPlugin);
@@ -665,6 +668,68 @@ class GameController {
     this.questionBox.addEventListener('animationend', () => {
       this.questionBox.classList.remove('swipe-locked-bounce');
     }, { once: true });
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // ĐIỀU HƯỚNG 3 TAB CỐ ĐỊNH ĐÁY (BOTTOM NAVIGATION - Phase 1)
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * Khởi tạo thanh điều hướng 3 tab cố định ở đáy màn hình
+   */
+  initBottomNav() {
+    this.activeTab = 'journey';
+    this.tabPanels = {
+      journey: document.getElementById('tab-journey'),
+      gallery: document.getElementById('tab-gallery'),
+      notes:   document.getElementById('tab-notes')
+    };
+    this.bottomNavItems = document.querySelectorAll('.bottom-nav-item');
+
+    this.bottomNavItems.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetTab = btn.dataset.tab;
+        if (targetTab) {
+          this.switchTab(targetTab);
+        }
+      });
+    });
+  }
+
+  /**
+   * Chuyển đổi qua lại giữa các tab (ẩn/hiện qua class .hidden, không unmount/remount DOM)
+   * Giúp giữ nguyên 100% state hiện tại của feed khi người dùng rời đi và quay lại tab Hành trình.
+   * @param {'journey' | 'gallery' | 'notes'} tabName
+   */
+  switchTab(tabName) {
+    if (!this.tabPanels[tabName] || this.activeTab === tabName) return;
+
+    this.activeTab = tabName;
+
+    // 1. Cập nhật hiển thị của các tab wrapper
+    Object.keys(this.tabPanels).forEach(key => {
+      const panel = this.tabPanels[key];
+      if (panel) {
+        if (key === tabName) {
+          panel.classList.remove('hidden');
+          panel.classList.add('active');
+        } else {
+          panel.classList.add('hidden');
+          panel.classList.remove('active');
+        }
+      }
+    });
+
+    // 2. Cập nhật trạng thái active và aria-selected của các nút nav
+    this.bottomNavItems.forEach(btn => {
+      if (btn.dataset.tab === tabName) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+      } else {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+      }
+    });
   }
 
   // ══════════════════════════════════════════════════════════════

@@ -41,6 +41,9 @@
   --radius-sm: 8px;
   --radius-pill: 50px;
   --transition-smooth: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+
+  /* Chiều cao thanh điều hướng đáy */
+  --bottom-nav-height: 64px;
 }
 
 /* --- Reset cơ bản --- */
@@ -181,7 +184,7 @@ body {
   flex-direction: column;
   gap: 16px;
   position: relative;
-  padding: max(16px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom)) 18px;
+  padding: max(16px, env(safe-area-inset-top)) 18px calc(max(20px, env(safe-area-inset-bottom)) + var(--bottom-nav-height)) 18px;
   box-sizing: border-box;
   overflow: hidden;
   animation: fadeInUp 0.4s ease-out;
@@ -487,7 +490,7 @@ body {
   height: 100%;
   height: 100dvh;
   background: linear-gradient(160deg, #ffffff 0%, #fff7f3 45%, #fbebee 100%);
-  padding: max(24px, env(safe-area-inset-top)) 20px max(32px, env(safe-area-inset-bottom)) 20px;
+  padding: max(24px, env(safe-area-inset-top)) 20px calc(max(24px, env(safe-area-inset-bottom)) + var(--bottom-nav-height)) 20px;
   box-sizing: border-box;
   position: relative;
   overflow: hidden;
@@ -665,7 +668,180 @@ body {
 }
 
 /* ==========================================================================
-   8. CHẾ ĐỘ CHỈNH SỬA & PIN MODAL
+   8. TAB PANELS & THANH ĐIỀU HƯỚNG ĐÁY (BOTTOM NAV - Phase 1)
+   ========================================================================== */
+.tab-panel {
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  position: relative;
+  overflow: hidden;
+}
+
+.tab-panel.hidden {
+  display: none !important;
+}
+
+/* Placeholder cho Tab Ảnh chung & Ghi chú */
+.tab-placeholder-content {
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px calc(max(24px, env(safe-area-inset-bottom)) + var(--bottom-nav-height)) 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.tab-placeholder-icon {
+  width: 76px;
+  height: 76px;
+  border-radius: var(--radius-lg);
+  background: rgba(184, 74, 91, 0.07);
+  border: 1.5px solid rgba(184, 74, 91, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color);
+  margin-bottom: 20px;
+  box-shadow: 0 6px 20px rgba(184, 74, 91, 0.08);
+}
+
+.tab-placeholder-title {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 8px;
+}
+
+.tab-placeholder-desc {
+  font-size: 0.92rem;
+  color: var(--text-light);
+}
+
+/* --- Bottom Navigation Bar --- */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-top: 1px solid var(--card-border);
+  box-shadow: 0 -4px 24px rgba(184, 74, 91, 0.08);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  user-select: none;
+}
+
+.bottom-nav-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 8px;
+}
+
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px 0;
+  transition: var(--transition-smooth);
+  font-family: var(--font-sans);
+}
+
+.bottom-nav-item:active {
+  transform: scale(0.95);
+}
+
+.bottom-nav-item .nav-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.bottom-nav-item .nav-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: color 0.2s ease, font-weight 0.2s ease;
+}
+
+/* Trạng thái Active của tab thường */
+.bottom-nav-item.active {
+  color: var(--primary-color);
+}
+
+.bottom-nav-item.active .nav-label {
+  font-weight: 700;
+}
+
+.bottom-nav-item.active .nav-icon-wrapper svg {
+  stroke-width: 2.3;
+}
+
+/* Nút Hành Trình ở giữa (To hơn, tròn, nổi bật, mặc định active) */
+.bottom-nav-item.nav-item-journey {
+  position: relative;
+  overflow: visible;
+}
+
+.nav-journey-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-rose));
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -14px;
+  box-shadow: 0 4px 14px rgba(184, 74, 91, 0.35);
+  border: 3px solid #ffffff;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease;
+}
+
+.bottom-nav-item.nav-item-journey:active .nav-journey-circle {
+  transform: scale(0.92);
+}
+
+.bottom-nav-item.nav-item-journey.active .nav-journey-circle {
+  box-shadow: 0 6px 18px rgba(184, 74, 91, 0.45);
+  transform: translateY(-2px);
+}
+
+.bottom-nav-item.nav-item-journey .nav-label {
+  margin-top: 1px;
+}
+
+/* ==========================================================================
+   9. CHẾ ĐỘ CHỈNH SỬA & PIN MODAL
    ========================================================================== */
 .edit-controls-container {
   position: absolute;
@@ -1321,6 +1497,28 @@ body {
   #epilogue-container {
     height: 100%;
     max-height: 100%;
+  }
+
+  .tab-panel {
+    height: 94vh;
+    height: 94dvh;
+  }
+
+  .tab-placeholder-content {
+    height: 94vh;
+    height: 94dvh;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--card-border);
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow: 0 15px 50px rgba(184, 74, 91, 0.15);
+  }
+
+  .bottom-nav {
+    bottom: calc((100dvh - 94dvh) / 2);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    border-left: 1px solid var(--card-border);
+    border-right: 1px solid var(--card-border);
+    border-bottom: 1px solid var(--card-border);
   }
 
   #scene-title {

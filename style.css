@@ -727,6 +727,271 @@ body {
   color: var(--text-light);
 }
 
+/* ==========================================================================
+   TAB GALLERY: LƯỚI ẢNH CHUNG (Phase 2)
+   ========================================================================== */
+.gallery-container {
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: max(16px, env(safe-area-inset-top)) 16px calc(max(24px, env(safe-area-inset-bottom)) + var(--bottom-nav-height)) 16px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  background: transparent;
+}
+
+.gallery-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px dashed rgba(229, 140, 153, 0.45);
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.gallery-header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.gallery-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--primary-color);
+  background: rgba(184, 74, 91, 0.08);
+  border: 1px solid rgba(184, 74, 91, 0.2);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  margin-bottom: 4px;
+}
+
+.gallery-title {
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  line-height: 1.25;
+}
+
+.gallery-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 13px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-rose));
+  color: #ffffff;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(184, 74, 91, 0.25);
+  transition: var(--transition-smooth);
+  flex-shrink: 0;
+}
+
+.gallery-add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(184, 74, 91, 0.35);
+}
+
+.gallery-add-btn:active {
+  transform: scale(0.96);
+}
+
+/* Lưới ảnh 2 cột (Mobile-First) */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+
+.gallery-card {
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1.5px solid rgba(229, 140, 153, 0.35);
+  box-shadow: 0 2px 8px rgba(184, 74, 91, 0.05);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.gallery-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(184, 74, 91, 0.12);
+}
+
+.gallery-img-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: rgba(184, 74, 91, 0.04);
+}
+
+.gallery-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.gallery-card:hover .gallery-img {
+  transform: scale(1.04);
+}
+
+/* Fallback ảnh lỗi */
+.gallery-img-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  background: rgba(184, 74, 91, 0.05);
+  color: var(--text-light);
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.gallery-img-fallback svg {
+  color: var(--primary-color);
+  opacity: 0.6;
+}
+
+/* Nút xoá ảnh */
+.gallery-delete-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 10;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(201, 59, 79, 0.3);
+  color: #c93b4f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: all 0.15s ease;
+}
+
+.gallery-delete-btn:hover {
+  background: #c93b4f;
+  color: #ffffff;
+  transform: scale(1.1);
+}
+
+/* Hiển thị điều khiển chỉnh sửa gallery theo trạng thái edit mode */
+body.edit-mode-active .gallery-add-btn {
+  display: inline-flex !important;
+}
+
+body:not(.edit-mode-active) .gallery-delete-btn {
+  display: none !important;
+}
+
+.gallery-caption {
+  padding: 7px 9px;
+  font-size: 0.78rem;
+  color: var(--text-main);
+  line-height: 1.35;
+  word-break: break-word;
+  background: #ffffff;
+}
+
+.gallery-caption:empty {
+  display: none;
+}
+
+/* Empty State của gallery */
+.gallery-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.gallery-empty-icon {
+  width: 68px;
+  height: 68px;
+  border-radius: var(--radius-lg);
+  background: rgba(184, 74, 91, 0.06);
+  border: 1.5px solid rgba(184, 74, 91, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color);
+  margin-bottom: 16px;
+}
+
+.gallery-empty h3 {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 6px;
+}
+
+.gallery-empty p {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+/* Xem trước ảnh trong form thêm ảnh */
+.photo-preview-container {
+  margin-top: 4px;
+}
+
+.photo-preview-box {
+  width: 100%;
+  max-height: 160px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1.5px dashed rgba(229, 140, 153, 0.45);
+  background: rgba(184, 74, 91, 0.02);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.photo-preview-box img {
+  max-width: 100%;
+  max-height: 152px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
 /* --- Bottom Navigation Bar --- */
 .bottom-nav {
   position: fixed;

@@ -97,6 +97,9 @@ class GameController {
     // Khởi tạo thanh điều hướng 3 tab cố định ở đáy (Bottom Navigation - Phase 1)
     this.initBottomNav();
 
+    // Khởi tạo Album Ảnh chung (Gallery - Phase 2)
+    this.initGallery();
+
     // Đăng ký GSAP MotionPathPlugin
     if (typeof gsap !== 'undefined' && typeof MotionPathPlugin !== 'undefined') {
       gsap.registerPlugin(MotionPathPlugin);
@@ -733,6 +736,303 @@ class GameController {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // QUẢN LÝ ALBUM ẢNH CHUNG (TAB GALLERY - Phase 2)
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * Khởi tạo các tham chiếu DOM và sự kiện cho Tab Gallery
+   */
+  initGallery() {
+    this.galleryItems = [];
+
+    // Tham chiếu DOM gallery
+    this.galleryGrid           = document.getElementById('gallery-grid');
+    this.galleryEmpty          = document.getElementById('gallery-empty');
+    this.galleryAddBtn         = document.getElementById('gallery-add-btn');
+
+    // Tham chiếu Modal Thêm ảnh
+    this.addPhotoModal         = document.getElementById('add-photo-modal');
+    this.addPhotoForm          = document.getElementById('add-photo-form');
+    this.addPhotoCloseX        = document.getElementById('add-photo-close-x');
+    this.addPhotoCancelBtn     = document.getElementById('add-photo-cancel-btn');
+    this.addPhotoSaveBtn       = document.getElementById('add-photo-save-btn');
+    this.addPhotoErrorMsg      = document.getElementById('add-photo-error-msg');
+    this.photoUrlInput         = document.getElementById('photo-url-input');
+    this.photoCaptionInput     = document.getElementById('photo-caption-input');
+    this.photoPreviewContainer = document.getElementById('photo-preview-container');
+    this.photoPreviewImg       = document.getElementById('photo-preview-img');
+
+    // 1. Lắng nghe real-time event cập nhật gallery từ Firestore Bridge
+    window.addEventListener('lj:galleryUpdated', (e) => {
+      this.galleryItems = Array.isArray(e.detail?.items) ? e.detail.items : [];
+      this.renderGallery();
+    });
+
+    // 2. Sự kiện mở/đóng modal thêm ảnh
+    if (this.galleryAddBtn) {
+      this.galleryAddBtn.addEventListener('click', () => this.openAddPhotoModal());
+    }
+
+    if (this.addPhotoCloseX) {
+      this.addPhotoCloseX.addEventListener('click', () => this.closeAddPhotoModal());
+    }
+
+    if (this.addPhotoCancelBtn) {
+      this.addPhotoCancelBtn.addEventListener('click', () => this.closeAddPhotoModal());
+    }
+
+    if (this.addPhotoModal) {
+      this.addPhotoModal.addEventListener('click', (e) => {
+        if (e.target === this.addPhotoModal) this.closeAddPhotoModal();
+      });
+    }
+
+    if (this.addPhotoForm) {
+      this.addPhotoForm.addEventListener('submit', (e) => this.saveNewPhoto(e));
+    }
+
+    // 3. Live preview khi dán URL ảnh
+    if (this.photoUrlInput) {
+      let debounceTimer = null;
+      this.photoUrlInput.addEventListener('input', () => {
+        this.hideAddPhotoError();
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          const url = this.photoUrlInput.value.trim();
+          if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+            if (this.photoPreviewImg && this.photoPreviewContainer) {
+              this.photoPreviewImg.src = url;
+              this.photoPreviewContainer.classList.remove('hidden');
+              this.photoPreviewImg.onerror = () => {
+                if (this.photoPreviewContainer) this.photoPreviewContainer.classList.add('hidden');
+              };
+            }
+          } else {
+            if (this.photoPreviewContainer) this.photoPreviewContainer.classList.add('hidden');
+          }
+        }, 300);
+      });
+    }
+
+    // Cập nhật trạng thái hiển thị nút thêm ảnh theo edit mode hiện tại
+    if (this.galleryAddBtn && this.isEditMode) {
+      this.galleryAddBtn.classList.remove('hidden');
+    }
+
+    // Render ban đầu
+    this.renderGallery();
+  }
+
+  /**
+   * Render danh sách ảnh trong gallery ra DOM
+   */
+  renderGallery() {
+    if (!this.galleryGrid) return;
+    this.galleryGrid.innerHTML = '';
+
+    if (!this.galleryItems || this.galleryItems.length === 0) {
+      if (this.galleryEmpty) this.galleryEmpty.classList.remove('hidden');
+      this.galleryGrid.classList.add('hidden');
+      return;
+    }
+
+    if (this.galleryEmpty) this.galleryEmpty.classList.add('hidden');
+    this.galleryGrid.classList.remove('hidden');
+
+    this.galleryItems.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'gallery-card';
+      card.dataset.id = item.id;
+
+      // Khung chứa ảnh
+      const wrapper = document.createElement('div');
+      wrapper.className = 'gallery-img-wrapper';
+
+      const img = document.createElement('img');
+      img.className = 'gallery-img';
+      img.src = item.imageUrl || '';
+      img.alt = item.caption || 'Ảnh kỷ niệm';
+      img.loading = 'lazy';
+
+      // Fallback khi ảnh bị lỗi link / 404
+      const fallback = document.createElement('div');
+      fallback.className = 'gallery-img-fallback hidden';
+      fallback.innerHTML = `
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="1" y1="1" x2="23" y2="23"></line>
+          <path d="M21 21H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l2 3h10a2 2 0 0 1 2 2v11"></path>
+          <circle cx="8.5" cy="10.5" r="1.5"></circle>
+        </svg>
+        <span>Không tải được ảnh</span>
+      `;
+
+      img.onerror = () => {
+        img.classList.add('hidden');
+        fallback.classList.remove('hidden');
+      };
+
+      wrapper.appendChild(img);
+      wrapper.appendChild(fallback);
+
+      // Nút xoá (chỉ hiển thị khi isEditMode qua CSS)
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'gallery-delete-btn';
+      deleteBtn.title = 'Xoá ảnh này khỏi album';
+      deleteBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      `;
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.deletePhoto(item.id);
+      });
+
+      wrapper.appendChild(deleteBtn);
+      card.appendChild(wrapper);
+
+      // Chú thích ảnh (nếu có)
+      if (item.caption && item.caption.trim()) {
+        const captionEl = document.createElement('div');
+        captionEl.className = 'gallery-caption';
+        captionEl.textContent = item.caption.trim();
+        card.appendChild(captionEl);
+      }
+
+      this.galleryGrid.appendChild(card);
+    });
+  }
+
+  /**
+   * Mở modal thêm ảnh mới
+   */
+  openAddPhotoModal() {
+    if (!this.addPhotoModal) return;
+    if (this.photoUrlInput) this.photoUrlInput.value = '';
+    if (this.photoCaptionInput) this.photoCaptionInput.value = '';
+    if (this.photoPreviewContainer) this.photoPreviewContainer.classList.add('hidden');
+    if (this.photoPreviewImg) this.photoPreviewImg.src = '';
+    this.hideAddPhotoError();
+
+    this.addPhotoModal.classList.remove('hidden');
+    setTimeout(() => {
+      if (this.photoUrlInput) this.photoUrlInput.focus();
+    }, 150);
+  }
+
+  /**
+   * Đóng modal thêm ảnh mới
+   */
+  closeAddPhotoModal() {
+    if (!this.addPhotoModal) return;
+    this.addPhotoModal.classList.add('hidden');
+    this.hideAddPhotoError();
+  }
+
+  showAddPhotoError(msg) {
+    if (this.addPhotoErrorMsg) {
+      this.addPhotoErrorMsg.textContent = msg;
+      this.addPhotoErrorMsg.classList.remove('hidden');
+    }
+  }
+
+  hideAddPhotoError() {
+    if (this.addPhotoErrorMsg) {
+      this.addPhotoErrorMsg.textContent = '';
+      this.addPhotoErrorMsg.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Lưu ảnh mới vào Firestore collection "gallery"
+   * @param {Event} e
+   */
+  async saveNewPhoto(e) {
+    e.preventDefault();
+    this.hideAddPhotoError();
+
+    const url = this.photoUrlInput ? this.photoUrlInput.value.trim() : '';
+    const caption = this.photoCaptionInput ? this.photoCaptionInput.value.trim() : '';
+
+    if (!url) {
+      this.showAddPhotoError('Vui lòng dán link ảnh trực tuyến.');
+      if (this.photoUrlInput) this.photoUrlInput.focus();
+      return;
+    }
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      this.showAddPhotoError('Link ảnh phải bắt đầu bằng http:// hoặc https://.');
+      if (this.photoUrlInput) this.photoUrlInput.focus();
+      return;
+    }
+
+    const payload = {
+      imageUrl: url,
+      caption: caption || '',
+      createdAt: Date.now(),
+      pin: window.APP_CONFIG?.adminPin ? String(window.APP_CONFIG.adminPin).trim() : ''
+    };
+
+    if (this.addPhotoSaveBtn) {
+      this.addPhotoSaveBtn.disabled = true;
+      this.addPhotoSaveBtn.textContent = 'Đang lưu...';
+    }
+
+    try {
+      if (typeof window.__LJ_ADD_GALLERY_ITEM !== 'function') {
+        throw new Error('Chức năng lưu ảnh chưa sẵn sàng. Vui lòng kiểm tra kết nối mạng.');
+      }
+
+      await window.__LJ_ADD_GALLERY_ITEM(payload);
+      console.log('[LoveJourney] Đã thêm ảnh mới vào gallery thành công.');
+      this.closeAddPhotoModal();
+    } catch (err) {
+      console.warn('[LoveJourney] Lỗi thêm ảnh gallery:', err);
+      let errorText = 'Lỗi lưu ảnh: ';
+      if (err && err.code === 'permission-denied') {
+        errorText += 'Không có quyền ghi (mã PIN không khớp Security Rules).';
+      } else {
+        errorText += (err.message || 'Vui lòng thử lại sau.');
+      }
+      this.showAddPhotoError(errorText);
+    } finally {
+      if (this.addPhotoSaveBtn) {
+        this.addPhotoSaveBtn.disabled = false;
+        this.addPhotoSaveBtn.textContent = 'Thêm';
+      }
+    }
+  }
+
+  /**
+   * Xoá ảnh khỏi Firestore collection "gallery"
+   * @param {string} id
+   */
+  async deletePhoto(id) {
+    if (!id) return;
+    if (!confirm('Bạn có chắc chắn muốn xoá bức ảnh này khỏi album ảnh chung?')) return;
+
+    try {
+      if (typeof window.__LJ_DELETE_GALLERY_ITEM !== 'function') {
+        throw new Error('Chức năng xoá ảnh chưa sẵn sàng.');
+      }
+
+      await window.__LJ_DELETE_GALLERY_ITEM(id);
+      console.log(`[LoveJourney] Đã xoá ảnh ${id} thành công.`);
+    } catch (err) {
+      console.warn('[LoveJourney] Lỗi xoá ảnh gallery:', err);
+      let errorText = 'Không thể xoá ảnh: ';
+      if (err && err.code === 'permission-denied') {
+        errorText += 'Không có quyền xoá (mã PIN không khớp Security Rules).';
+      } else {
+        errorText += (err.message || 'Vui lòng thử lại sau.');
+      }
+      alert(errorText);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // QUẢN LÝ CHẾ ĐỘ CHỈNH SỬA & XÁC THỰC PIN
   // ══════════════════════════════════════════════════════════════
 
@@ -900,6 +1200,9 @@ class GameController {
       document.body.classList.add('edit-mode-active');
       this.renderEditSceneButton();
       this.renderAddSceneButton();
+      if (this.galleryAddBtn) {
+        this.galleryAddBtn.classList.remove('hidden');
+      }
     } else {
       sessionStorage.removeItem('isEditMode');
       if (this.editModeBtn) {
@@ -915,6 +1218,10 @@ class GameController {
       this.removeAddSceneButton();
       this.closeEditSceneModal();
       this.closeAddSceneModal();
+      if (this.galleryAddBtn) {
+        this.galleryAddBtn.classList.add('hidden');
+      }
+      this.closeAddPhotoModal();
     }
   }
 

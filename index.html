@@ -82,18 +82,41 @@
     </main>
   </div>
 
-  <!-- Tab 2: Ảnh chung (Placeholder) -->
+  <!-- Tab 2: Ảnh chung (Gallery) -->
   <div id="tab-gallery" class="tab-panel hidden">
-    <div class="tab-placeholder-content">
-      <div class="tab-placeholder-icon">
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-          <circle cx="8.5" cy="8.5" r="1.5"></circle>
-          <polyline points="21 15 16 10 5 21"></polyline>
-        </svg>
+    <div class="gallery-container">
+      <!-- Header của Gallery: Tiêu đề + Nút Thêm ảnh (chỉ hiện khi bật edit mode) -->
+      <header class="gallery-header">
+        <div class="gallery-header-left">
+          <span class="gallery-badge">Khoảnh khắc</span>
+          <h2 class="gallery-title">Ảnh chung của chúng mình</h2>
+        </div>
+        <button type="button" id="gallery-add-btn" class="gallery-add-btn hidden" title="Thêm ảnh mới">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>+ Thêm ảnh</span>
+        </button>
+      </header>
+
+      <!-- Lưới ảnh hiển thị các item -->
+      <div id="gallery-grid" class="gallery-grid">
+        <!-- Render động qua GameController -->
       </div>
-      <h2 class="tab-placeholder-title">Ảnh chung</h2>
-      <p class="tab-placeholder-desc">Tính năng đang được phát triển</p>
+
+      <!-- Trạng thái trống (Empty State) -->
+      <div id="gallery-empty" class="gallery-empty hidden">
+        <div class="gallery-empty-icon">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+        </div>
+        <h3>Chưa có bức ảnh nào</h3>
+        <p>Bật chế độ chỉnh sửa để thêm những bức ảnh kỷ niệm đầu tiên nhé ❤</p>
+      </div>
     </div>
   </div>
 
@@ -299,6 +322,45 @@
         <div class="edit-modal-actions">
           <button type="button" id="add-scene-cancel-btn" class="pin-btn pin-btn-cancel">Huỷ</button>
           <button type="submit" id="add-scene-save-btn" class="pin-btn pin-btn-confirm">Tạo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Thêm Ảnh Mới vào Album Ảnh chung (#add-photo-modal) -->
+  <div id="add-photo-modal" class="pin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="add-photo-modal-title">
+    <div class="pin-modal-card edit-scene-modal-card">
+      <div class="edit-modal-header">
+        <h3 id="add-photo-modal-title">Thêm ảnh kỷ niệm</h3>
+        <button type="button" id="add-photo-close-x" class="edit-modal-close-x" aria-label="Đóng">&times;</button>
+      </div>
+
+      <form id="add-photo-form" class="edit-scene-form" novalidate>
+        <div class="form-group">
+          <label for="photo-url-input">Link ảnh trực tuyến <span class="req">*</span></label>
+          <input type="text" id="photo-url-input" placeholder="Dán link ảnh (VD: https://...)" required autocomplete="off" />
+        </div>
+
+        <div class="form-group">
+          <label for="photo-caption-input">Chú thích ảnh (tuỳ chọn)</label>
+          <input type="text" id="photo-caption-input" placeholder="Nhập kỷ niệm hoặc lời nhắn..." maxlength="120" />
+        </div>
+
+        <!-- Khung xem trước ảnh (Preview) -->
+        <div id="photo-preview-container" class="photo-preview-container hidden">
+          <label class="section-heading-label">Xem trước ảnh</label>
+          <div class="photo-preview-box">
+            <img id="photo-preview-img" src="" alt="Xem trước" />
+          </div>
+        </div>
+
+        <!-- Thông báo lỗi -->
+        <div id="add-photo-error-msg" class="pin-error-msg hidden"></div>
+
+        <!-- Các nút thao tác -->
+        <div class="edit-modal-actions">
+          <button type="button" id="add-photo-cancel-btn" class="pin-btn pin-btn-cancel">Huỷ</button>
+          <button type="submit" id="add-photo-save-btn" class="pin-btn pin-btn-confirm">Thêm</button>
         </div>
       </form>
     </div>

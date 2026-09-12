@@ -17,7 +17,7 @@
 
 import { initializeApp }
   from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js';
-import { getFirestore, collection, query, orderBy, onSnapshot, doc, setDoc, addDoc }
+import { getFirestore, collection, query, orderBy, onSnapshot, doc, setDoc, addDoc, deleteDoc }
   from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js';
 
 // ── Khởi tạo Firebase ───────────────────────────────────────────────────────
@@ -37,6 +37,18 @@ window.__LJ_UPDATE_SCENE = async function(firestoreId, sceneData) {
 window.__LJ_ADD_SCENE = async function(sceneData) {
   const colRef = collection(db, 'memories');
   return await addDoc(colRef, sceneData);
+};
+
+// Expose helper thêm ảnh mới vào collection "gallery"
+window.__LJ_ADD_GALLERY_ITEM = async function(itemData) {
+  const colRef = collection(db, 'gallery');
+  return await addDoc(colRef, itemData);
+};
+
+// Expose helper xoá ảnh khỏi collection "gallery"
+window.__LJ_DELETE_GALLERY_ITEM = async function(firestoreId) {
+  const docRef = doc(db, 'gallery', firestoreId);
+  return await deleteDoc(docRef);
 };
 
 // ── Helper: đoán loại media từ đuôi file / URL ──────────────────────────────
@@ -143,3 +155,26 @@ onSnapshot(
     );
   }
 );
+
+// ── onSnapshot listener cho collection "gallery" (Phase 2) ───────────────────
+const galleryQuery = query(
+  collection(db, 'gallery'),
+  orderBy('createdAt', 'desc')
+);
+
+onSnapshot(
+  galleryQuery,
+  (snapshot) => {
+    const items = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    window.dispatchEvent(
+      new CustomEvent('lj:galleryUpdated', { detail: { items } })
+    );
+  },
+  (error) => {
+    console.warn('[LoveJourney] Firestore gallery error:', error.code, error.message);
+  }
+);
+

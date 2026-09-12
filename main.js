@@ -434,6 +434,8 @@ class GameController {
   initEditMode() {
     // Khởi tạo các thành phần form sửa scene
     this.initEditSceneModal();
+    // Khởi tạo các thành phần form thêm scene mới
+    this.initAddSceneModal();
 
     // 1. Phục hồi trạng thái edit mode từ sessionStorage trong phiên làm việc
     const savedEditMode = sessionStorage.getItem('isEditMode') === 'true';
@@ -589,6 +591,7 @@ class GameController {
       }
       document.body.classList.add('edit-mode-active');
       this.renderEditSceneButton();
+      this.renderAddSceneButton();
     } else {
       sessionStorage.removeItem('isEditMode');
       if (this.editModeBtn) {
@@ -601,7 +604,9 @@ class GameController {
       }
       document.body.classList.remove('edit-mode-active');
       this.removeEditSceneButton();
+      this.removeAddSceneButton();
       this.closeEditSceneModal();
+      this.closeAddSceneModal();
     }
   }
 
@@ -911,6 +916,325 @@ class GameController {
       if (this.editSceneSaveBtn) {
         this.editSceneSaveBtn.disabled = false;
         this.editSceneSaveBtn.textContent = 'Lưu';
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // QUẢN LÝ FORM & NÚT THÊM KỶ NIỆM MỚI (FRACTIONAL INDEXING)
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * Render nút "+ Thêm" vào DOM khi edit mode bật
+   * (Chỉ render khi isEditMode === true, tránh lộ UI khi tắt)
+   */
+  renderAddSceneButton() {
+    if (document.getElementById('add-scene-btn')) return;
+
+    const container = document.getElementById('edit-controls-container') || document.querySelector('.scene-container');
+    if (!container) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'add-scene-btn';
+    btn.className = 'add-scene-btn';
+    btn.type = 'button';
+    btn.title = 'Thêm kỷ niệm mới';
+    btn.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      <span>+ Thêm</span>
+    `;
+
+    btn.addEventListener('click', () => this.openAddSceneModal());
+    container.appendChild(btn);
+  }
+
+  /**
+   * Xoá hoàn toàn nút "+ Thêm" khỏi DOM khi edit mode tắt
+   */
+  removeAddSceneButton() {
+    const btn = document.getElementById('add-scene-btn');
+    if (btn) btn.remove();
+  }
+
+  /**
+   * Khởi tạo tham chiếu và sự kiện cho modal thêm scene mới
+   */
+  initAddSceneModal() {
+    this.addSceneModal     = document.getElementById('add-scene-modal');
+    this.addSceneForm      = document.getElementById('add-scene-form');
+    this.addSceneCloseX    = document.getElementById('add-scene-close-x');
+    this.addSceneCancelBtn = document.getElementById('add-scene-cancel-btn');
+    this.addSceneSaveBtn   = document.getElementById('add-scene-save-btn');
+    this.addSceneErrorMsg  = document.getElementById('add-scene-error-msg');
+
+    this.addInsertPosition = document.getElementById('add-insert-position');
+    this.addSceneName      = document.getElementById('add-scene-name');
+    this.addJournalEntry   = document.getElementById('add-journal-entry');
+    this.addQuestion       = document.getElementById('add-question');
+    this.addOptionInputs   = [
+      document.getElementById('add-option-0'),
+      document.getElementById('add-option-1'),
+      document.getElementById('add-option-2'),
+      document.getElementById('add-option-3')
+    ];
+    this.addCorrectAnswer  = document.getElementById('add-correct-answer');
+    this.addHint           = document.getElementById('add-hint');
+    this.addMediaUrl       = document.getElementById('add-media-url');
+
+    if (this.addSceneCloseX) {
+      this.addSceneCloseX.addEventListener('click', () => this.closeAddSceneModal());
+    }
+
+    if (this.addSceneCancelBtn) {
+      this.addSceneCancelBtn.addEventListener('click', () => this.closeAddSceneModal());
+    }
+
+    if (this.addSceneForm) {
+      this.addSceneForm.addEventListener('submit', (e) => this.saveNewScene(e));
+    }
+
+    // Cập nhật dropdown đáp án đúng khi gõ vào 4 options
+    this.addOptionInputs.forEach(input => {
+      if (input) {
+        input.addEventListener('input', () => this.syncAddCorrectAnswerOptions());
+      }
+    });
+  }
+
+  /**
+   * Điền danh sách các vị trí chèn khả dụng vào select
+   * (Chỉ cho chèn 'Đầu tiên' hoặc 'Sau các scene thường', KHÔNG cho chèn sau epilogue)
+   */
+  populateInsertPositionDropdown() {
+    if (!this.addInsertPosition) return;
+    this.addInsertPosition.innerHTML = '<option value="__first__">Đầu tiên (trước tất cả)</option>';
+
+    // Liệt kê các scene KHÔNG PHẢI epilogue
+    this.scenesData.forEach((scene, index) => {
+      const isEpilogue = Boolean(scene.isEpilogue || scene.question === null);
+      if (!isEpilogue) {
+        const opt = document.createElement('option');
+        opt.value = String(index);
+        opt.textContent = `Sau: ${scene.sceneName || ('Kỷ niệm ' + (index + 1))}`;
+        // Mặc định chọn vị trí ngay sau scene đang xem nếu scene đang xem không phải epilogue
+        if (index === this.currentSceneIndex) {
+          opt.selected = true;
+        }
+        this.addInsertPosition.appendChild(opt);
+      }
+    });
+  }
+
+  /**
+   * Đồng bộ 4 lựa chọn nhập vào danh sách dropdown đáp án đúng của form thêm mới
+   */
+  syncAddCorrectAnswerOptions() {
+    if (!this.addCorrectAnswer) return;
+    const currentVal = this.addCorrectAnswer.value;
+    const letters = ['A', 'B', 'C', 'D'];
+
+    this.addCorrectAnswer.innerHTML = '<option value="">-- Chọn đáp án đúng từ 4 lựa chọn trên --</option>';
+
+    this.addOptionInputs.forEach((input, i) => {
+      const val = input ? input.value.trim() : '';
+      if (val) {
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = `[${letters[i]}] ${val}`;
+        if (val === currentVal) {
+          opt.selected = true;
+        }
+        this.addCorrectAnswer.appendChild(opt);
+      }
+    });
+  }
+
+  /**
+   * Mở modal thêm kỷ niệm mới
+   */
+  openAddSceneModal() {
+    if (!this.addSceneModal) return;
+
+    // Reset các trường nhập
+    if (this.addSceneName) this.addSceneName.value = '';
+    if (this.addJournalEntry) this.addJournalEntry.value = '';
+    if (this.addQuestion) this.addQuestion.value = '';
+    this.addOptionInputs.forEach(input => { if (input) input.value = ''; });
+    if (this.addHint) this.addHint.value = '';
+    if (this.addMediaUrl) this.addMediaUrl.value = '';
+
+    // Cập nhật dropdown vị trí và đáp án đúng
+    this.populateInsertPositionDropdown();
+    this.syncAddCorrectAnswerOptions();
+    this.hideAddSceneError();
+
+    // Mở modal
+    this.addSceneModal.classList.remove('hidden');
+  }
+
+  /**
+   * Đóng modal thêm kỷ niệm mới
+   */
+  closeAddSceneModal() {
+    if (!this.addSceneModal) return;
+    this.addSceneModal.classList.add('hidden');
+    this.hideAddSceneError();
+  }
+
+  showAddSceneError(msg) {
+    if (this.addSceneErrorMsg) {
+      this.addSceneErrorMsg.textContent = msg;
+      this.addSceneErrorMsg.classList.remove('hidden');
+    }
+  }
+
+  hideAddSceneError() {
+    if (this.addSceneErrorMsg) {
+      this.addSceneErrorMsg.textContent = '';
+      this.addSceneErrorMsg.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Tính toán field 'order' bằng kỹ thuật Fractional Indexing
+   * @returns {number}
+   */
+  calculateNewSceneOrder() {
+    const posVal = this.addInsertPosition ? this.addInsertPosition.value : '__first__';
+    const getOrder = (scene) => Number(scene.id ?? scene.order);
+
+    if (this.scenesData.length === 0) {
+      return 1;
+    }
+
+    if (posVal === '__first__') {
+      const firstOrder = getOrder(this.scenesData[0]);
+      let newOrder;
+      if (firstOrder <= 0) {
+        newOrder = firstOrder - 1;
+      } else {
+        newOrder = firstOrder / 2;
+      }
+
+      if (Math.abs(firstOrder - newOrder) < 0.0001 || newOrder < 0.0001) {
+        throw new Error('Khoảng cách thứ tự ở vị trí đầu tiên quá nhỏ (< 0.0001). Vui lòng chọn vị trí khác.');
+      }
+      return newOrder;
+    }
+
+    // Chọn chèn sau scene tại sorted index idx
+    const idx = parseInt(posVal, 10);
+    if (isNaN(idx) || idx < 0 || idx >= this.scenesData.length) {
+      throw new Error('Vị trí chèn không hợp lệ.');
+    }
+
+    const orderX = getOrder(this.scenesData[idx]);
+
+    // Scene ngay sau scene X trong danh sách đã sort (nếu X là scene thường cuối, scene sau chính là epilogue)
+    if (idx + 1 < this.scenesData.length) {
+      const orderY = getOrder(this.scenesData[idx + 1]);
+      if (Math.abs(orderY - orderX) < 0.0001) {
+        throw new Error('Khoảng cách thứ tự giữa 2 kỷ niệm quá nhỏ (< 0.0001). Vui lòng chọn vị trí khác.');
+      }
+      return (orderX + orderY) / 2;
+    } else {
+      // Trường hợp không có scene nào sau (không xảy ra vì luôn có epilogue ở cuối)
+      return orderX + 1;
+    }
+  }
+
+  /**
+   * Validate và gửi document mới lên Firestore bằng addDoc
+   * @param {Event} e 
+   */
+  async saveNewScene(e) {
+    e.preventDefault();
+    this.hideAddSceneError();
+
+    // 1. Validate các trường bắt buộc
+    const journal = this.addJournalEntry ? this.addJournalEntry.value.trim() : '';
+    const question = this.addQuestion ? this.addQuestion.value.trim() : '';
+    const options = this.addOptionInputs.map(input => input ? input.value.trim() : '');
+    const correctAnswer = this.addCorrectAnswer ? this.addCorrectAnswer.value.trim() : '';
+    const hint = this.addHint ? this.addHint.value.trim() : '';
+    const mediaUrl = this.addMediaUrl ? this.addMediaUrl.value.trim() : '';
+    const customName = this.addSceneName ? this.addSceneName.value.trim() : '';
+
+    if (!journal) {
+      this.showAddSceneError('Vui lòng nhập đoạn nhật ký.');
+      return;
+    }
+    if (!question) {
+      this.showAddSceneError('Vui lòng nhập câu hỏi trắc nghiệm.');
+      return;
+    }
+    if (options.some(o => !o)) {
+      this.showAddSceneError('Vui lòng nhập đầy đủ cả 4 lựa chọn trắc nghiệm.');
+      return;
+    }
+    if (!correctAnswer) {
+      this.showAddSceneError('Vui lòng chọn 1 đáp án đúng từ danh sách.');
+      return;
+    }
+    if (!hint) {
+      this.showAddSceneError('Vui lòng nhập gợi ý khi trả lời sai.');
+      return;
+    }
+
+    // 2. Tính giá trị order theo vị trí chèn
+    let newOrder;
+    try {
+      newOrder = this.calculateNewSceneOrder();
+    } catch (err) {
+      this.showAddSceneError(err.message);
+      return;
+    }
+
+    // 3. Chuẩn bị payload đúng schema Firestore
+    const payload = {
+      order: newOrder,
+      sceneName: customName || 'Kỷ niệm mới',
+      isEpilogue: false,
+      journalEntry: journal,
+      question: question,
+      options: options,
+      correctAnswer: correctAnswer,
+      hint: hint,
+      mediaUrl: mediaUrl || null,
+      epilogueMessage: null,
+      pin: window.APP_CONFIG?.adminPin ? String(window.APP_CONFIG.adminPin).trim() : ''
+    };
+
+    // 4. Ghi lên Firestore bằng addDoc
+    if (this.addSceneSaveBtn) {
+      this.addSceneSaveBtn.disabled = true;
+      this.addSceneSaveBtn.textContent = 'Đang tạo...';
+    }
+
+    try {
+      if (typeof window.__LJ_ADD_SCENE !== 'function') {
+        throw new Error('Chức năng thêm scene Firestore chưa sẵn sàng. Vui lòng kiểm tra kết nối mạng.');
+      }
+
+      const docRef = await window.__LJ_ADD_SCENE(payload);
+      console.log(`[LoveJourney] Đã thêm scene mới thành công (ID: ${docRef.id}, order: ${newOrder}).`);
+      this.closeAddSceneModal();
+    } catch (err) {
+      console.warn('[LoveJourney] Lỗi thêm scene:', err);
+      let errorText = 'Lỗi tạo kỷ niệm: ';
+      if (err && err.code === 'permission-denied') {
+        errorText += 'Không có quyền ghi (mã PIN không khớp Security Rules).';
+      } else {
+        errorText += (err.message || 'Vui lòng thử lại sau.');
+      }
+      this.showAddSceneError(errorText);
+    } finally {
+      if (this.addSceneSaveBtn) {
+        this.addSceneSaveBtn.disabled = false;
+        this.addSceneSaveBtn.textContent = 'Tạo';
       }
     }
   }

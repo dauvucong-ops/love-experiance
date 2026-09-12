@@ -172,6 +172,85 @@
     </div>
   </div>
 
+  <!-- Modal Thêm Kỷ Niệm Mới (Add Scene Form) -->
+  <div id="add-scene-modal" class="pin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="add-scene-modal-title">
+    <div class="pin-modal-card edit-scene-modal-card">
+      <div class="edit-modal-header">
+        <h3 id="add-scene-modal-title">Thêm kỷ niệm mới</h3>
+        <button type="button" id="add-scene-close-x" class="edit-modal-close-x" aria-label="Đóng">&times;</button>
+      </div>
+
+      <form id="add-scene-form" class="edit-scene-form" novalidate>
+        <!-- Chọn vị trí chèn (fractional indexing) -->
+        <div class="form-group">
+          <label for="add-insert-position">Chèn vào vị trí nào? <span class="req">*</span></label>
+          <select id="add-insert-position" required>
+            <option value="__first__">Đầu tiên (trước tất cả)</option>
+            <!-- Sẽ được JS tự động điền danh sách các scene không phải epilogue -->
+          </select>
+        </div>
+
+        <!-- Tên / Tiêu đề kỷ niệm -->
+        <div class="form-group">
+          <label for="add-scene-name">Tên kỷ niệm (Tiêu đề)</label>
+          <input type="text" id="add-scene-name" placeholder="VD: Buổi chiều ngắm hoàng hôn (để trống sẽ tự sinh)" />
+        </div>
+
+        <!-- Đoạn nhật ký -->
+        <div class="form-group">
+          <label for="add-journal-entry">Đoạn nhật ký <span class="req">*</span></label>
+          <textarea id="add-journal-entry" rows="3" placeholder="Nhập đoạn hồi tưởng cảm xúc trước khi hiện câu hỏi..."></textarea>
+        </div>
+
+        <!-- Câu hỏi trắc nghiệm -->
+        <div class="form-group">
+          <label for="add-question">Câu hỏi trắc nghiệm <span class="req">*</span></label>
+          <input type="text" id="add-question" placeholder="Nhập câu hỏi trắc nghiệm..." />
+        </div>
+
+        <!-- 4 Lựa chọn -->
+        <div class="form-group">
+          <label>4 Lựa chọn trắc nghiệm <span class="req">*</span></label>
+          <div class="options-inputs-grid">
+            <input type="text" id="add-option-0" class="edit-option-input" placeholder="Lựa chọn A..." />
+            <input type="text" id="add-option-1" class="edit-option-input" placeholder="Lựa chọn B..." />
+            <input type="text" id="add-option-2" class="edit-option-input" placeholder="Lựa chọn C..." />
+            <input type="text" id="add-option-3" class="edit-option-input" placeholder="Lựa chọn D..." />
+          </div>
+        </div>
+
+        <!-- Đáp án đúng -->
+        <div class="form-group">
+          <label for="add-correct-answer">Đáp án đúng <span class="req">*</span></label>
+          <select id="add-correct-answer">
+            <option value="">-- Chọn đáp án đúng từ 4 lựa chọn trên --</option>
+          </select>
+        </div>
+
+        <!-- Gợi ý -->
+        <div class="form-group">
+          <label for="add-hint">Gợi ý khi trả lời sai <span class="req">*</span></label>
+          <input type="text" id="add-hint" placeholder="Nhập gợi ý khi trả lời sai..." />
+        </div>
+
+        <!-- Link media -->
+        <div class="form-group">
+          <label for="add-media-url">Link Media sau mở khóa (Ảnh / Audio)</label>
+          <input type="text" id="add-media-url" placeholder="dán link ảnh/audio online (VD: https://...)" />
+        </div>
+
+        <!-- Thông báo lỗi -->
+        <div id="add-scene-error-msg" class="pin-error-msg hidden"></div>
+
+        <!-- Các nút thao tác -->
+        <div class="edit-modal-actions">
+          <button type="button" id="add-scene-cancel-btn" class="pin-btn pin-btn-cancel">Huỷ</button>
+          <button type="submit" id="add-scene-save-btn" class="pin-btn pin-btn-confirm">Tạo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!--
     THỨ TỰ SCRIPT (bắt buộc):
     1. firebase-config.js  — classic, expose window.FIREBASE_CONFIG

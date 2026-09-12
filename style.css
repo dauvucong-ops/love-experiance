@@ -678,6 +678,34 @@ body {
   transform: scale(0.96);
 }
 
+/* Nút Thêm Scene (chỉ hiển thị khi isEditMode === true) */
+.add-scene-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 13px;
+  background: linear-gradient(135deg, var(--accent-gold), var(--primary-color));
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  box-shadow: 0 3px 10px rgba(212, 163, 115, 0.35);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  animation: fadeIn 0.25s ease-out;
+}
+
+.add-scene-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(212, 163, 115, 0.45);
+}
+
+.add-scene-btn:active {
+  transform: scale(0.96);
+}
+
 /* Modal Overlay Nhập PIN */
 .pin-modal-overlay {
   position: fixed;

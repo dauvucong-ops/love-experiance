@@ -17,7 +17,7 @@
 
 import { initializeApp }
   from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js';
-import { getFirestore, collection, query, orderBy, onSnapshot, doc, setDoc }
+import { getFirestore, collection, query, orderBy, onSnapshot, doc, setDoc, addDoc }
   from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js';
 
 // ── Khởi tạo Firebase ───────────────────────────────────────────────────────
@@ -31,6 +31,12 @@ window.__LJ_DB = db;
 window.__LJ_UPDATE_SCENE = async function(firestoreId, sceneData) {
   const docRef = doc(db, 'memories', firestoreId);
   return await setDoc(docRef, sceneData, { merge: true });
+};
+
+// Expose helper tạo scene mới lên Firestore (addDoc tự sinh document ID)
+window.__LJ_ADD_SCENE = async function(sceneData) {
+  const colRef = collection(db, 'memories');
+  return await addDoc(colRef, sceneData);
 };
 
 // ── Helper: đoán loại media từ đuôi file / URL ──────────────────────────────

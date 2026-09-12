@@ -3,37 +3,6 @@
  */
 
 // ══════════════════════════════════════════════════════════════
-// generateCoordinates(count) — tự sinh toạ độ SVG cho N scenes
-//
-// Tạo ra N điểm phân bố theo sóng sin 1.5 chu kỳ trong viewBox
-// 1000×600, co giãn tự động dù có 3 hay 20 kỷ niệm.
-// Thay thế hoàn toàn pathCoordinate hardcode trong data.js.
-// ══════════════════════════════════════════════════════════════
-function generateCoordinates(count) {
-  const W = 1000, H = 600;
-  const padX = 80, padY = 90;
-  const midY = H / 2;                         // 300
-  const amplitude = (H / 2 - padY) * 0.65;   // ≈ 137 — biên độ dao động
-
-  if (count === 1) return [{ x: W / 2, y: midY }];
-  if (count === 2) return [
-    { x: padX,     y: midY + amplitude },
-    { x: W - padX, y: midY - amplitude }
-  ];
-
-  return Array.from({ length: count }, (_, i) => {
-    const t = i / (count - 1);                // 0 → 1
-    const x = Math.round(padX + t * (W - 2 * padX));
-    // 1.5 chu kỳ sin: mid → cao → mid → thấp → mid → cao → mid  (cho 7 điểm)
-    const y = Math.round(midY - amplitude * Math.sin(t * Math.PI * 3));
-    return {
-      x,
-      y: Math.max(padY, Math.min(H - padY, y))  // giữ trong vùng đệm
-    };
-  });
-}
-
-// ══════════════════════════════════════════════════════════════
 // stripSceneOrdinalPrefix(name) — loại bỏ tiền tố số thứ tự cứng
 //
 // Loại bỏ các tiền tố như "Kỷ niệm 1: ", "Kỷ niệm số 2: ", "2: ",
@@ -60,8 +29,6 @@ class GameController {
     this.activeTab = 'journey';
 
     // ─── Tham chiếu DOM cố định ───────────────────────────────
-    this.journeyPath    = document.getElementById('journey-path');
-    this.character      = document.getElementById('character');
     this.sceneIndicator = document.getElementById('scene-indicator');
     this.sceneTitle     = document.getElementById('scene-title');
     this.journalContainer = document.getElementById('journal-container');
@@ -103,74 +70,6 @@ class GameController {
 
     // Khởi tạo Ghi chú về 2 người (Profiles - Phase 3)
     this.initProfiles();
-
-    // Đăng ký GSAP MotionPathPlugin
-    if (typeof gsap !== 'undefined' && typeof MotionPathPlugin !== 'undefined') {
-      gsap.registerPlugin(MotionPathPlugin);
-    }
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // buildJourneyPath — tạo chuỗi d="" cho #journey-path
-  //   Gọi generateCoordinates() để tính toạ độ SVG động (không
-  //   còn phụ thuộc vào pathCoordinate hardcode trong data.js).
-  //   Gán lại pathCoordinate cho từng scene để unlockNextScene()
-  //   và _placeCharacterAt() vẫn hoạt động bình thường.
-  // ══════════════════════════════════════════════════════════════
-  buildJourneyPath() {
-    // ── Tính toạ độ động theo số lượng scene hiện tại ─────────
-    const coords = generateCoordinates(this.scenesData.length);
-
-    // Gán lại pathCoordinate (quan trọng: unlockNextScene đọc field này)
-    this.scenesData.forEach((scene, i) => {
-      scene.pathCoordinate = coords[i];
-    });
-
-    const pts = coords;
-
-    // ── Catmull-Rom → Bezier helper ───────────────────────────
-    const catmullToBezier = (p0, p1, p2, p3) => {
-      const cp1x = p1.x + (p2.x - p0.x) / 6;
-      const cp1y = p1.y + (p2.y - p0.y) / 6;
-      const cp2x = p2.x - (p3.x - p1.x) / 6;
-      const cp2y = p2.y - (p3.y - p1.y) / 6;
-      return { cp1x, cp1y, cp2x, cp2y };
-    };
-
-    // Bổ sung điểm ảo ở hai đầu để cong mượt tại đầu/cuối path
-    const extended = [
-      { x: pts[0].x * 2 - pts[1].x, y: pts[0].y * 2 - pts[1].y },
-      ...pts,
-      { x: pts[pts.length - 1].x * 2 - pts[pts.length - 2].x,
-        y: pts[pts.length - 1].y * 2 - pts[pts.length - 2].y }
-    ];
-
-    // Xây chuỗi d SVG
-    let d = `M ${pts[0].x} ${pts[0].y}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const { cp1x, cp1y, cp2x, cp2y } =
-        catmullToBezier(extended[i], extended[i+1], extended[i+2], extended[i+3]);
-      d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)},` +
-           ` ${cp2x.toFixed(2)} ${cp2y.toFixed(2)},` +
-           ` ${pts[i+1].x} ${pts[i+1].y}`;
-    }
-
-    this.journeyPath.setAttribute('d', d);
-    this._placeCharacterAt(pts[0]);
-  }
-
-  // ── Đặt nhân vật vào toạ độ SVG (x, y) ──────────────────────
-  _placeCharacterAt({ x, y }) {
-    // Xoá transform do GSAP để lại trước khi vẽ lại
-    if (typeof gsap !== 'undefined') {
-      gsap.set(this.character, { clearProps: 'all' });
-    }
-    this.character.setAttribute('transform', '');
-    // Vẽ lại chấm tròn tại toạ độ mới
-    this.character.innerHTML = `
-      <circle cx="${x}" cy="${y}" r="10" />
-      <circle cx="${x}" cy="${y}" r="16" fill="rgba(184,74,91,0.18)" />
-    `;
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -426,7 +325,7 @@ class GameController {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // unlockNextScene() — hiện media + animate GSAP + chuyển cảnh
+  // unlockNextScene() — hiện media + chuyển cảnh
   // ══════════════════════════════════════════════════════════════
   unlockNextScene() {
     const scene = this.scenesData[this.currentSceneIndex];
@@ -437,50 +336,22 @@ class GameController {
     if (scene.mediaAfterUnlock && scene.mediaAfterUnlock.src) {
       this._renderMedia(scene.mediaAfterUnlock, this.mediaContainer);
       this.mediaContainer.classList.remove('hidden');
-    }
 
-    // ── GSAP MotionPath: di chuyển nhân vật tới toạ độ tiếp theo
-    if (typeof gsap !== 'undefined' && hasNext) {
-      const nextCoord = this.scenesData[nextIndex].pathCoordinate;
-
-      // Tính tiến trình dọc path (0 → 1)
-      const totalSegments = this.scenesData.length - 1;
-      const progressStart = this.currentSceneIndex / totalSegments;
-      const progressEnd = nextIndex / totalSegments;
-
-      gsap.to(this.character, {
-        duration: 1.8,
-        ease: 'power2.inOut',
-        motionPath: {
-          path: '#journey-path',
-          start: progressStart,
-          end: progressEnd,
-          autoRotate: false
-        },
-        onComplete: () => {
-          // Reset nhân vật về toạ độ cụ thể sau khi tween xong
-          this._placeCharacterAt(nextCoord);
-
-          // Nếu có media: thêm nút "Tiếp theo" để người dùng tự quyết định khi nào chuyển
-          if (scene.mediaAfterUnlock && scene.mediaAfterUnlock.src) {
-            const nextBtn = document.createElement('button');
-            nextBtn.textContent = nextIndex < this.scenesData.length - 1
-              ? '→ Kỷ niệm tiếp theo'
-              : '→ Đọc lời kết';
-            nextBtn.className = 'next-scene-btn';
-            nextBtn.addEventListener('click', () => {
-              this.loadScene(nextIndex);
-            }, { once: true });
-            this.mediaContainer.appendChild(nextBtn);
-          } else {
-            // Không có media: chuyển tự động sau 600ms
-            setTimeout(() => this.loadScene(nextIndex), 600);
-          }
-        }
-      });
+      // Nếu có media: thêm nút "Tiếp theo" để người dùng tự quyết định khi nào chuyển
+      if (hasNext) {
+        const nextBtn = document.createElement('button');
+        nextBtn.textContent = nextIndex < this.scenesData.length - 1
+          ? '→ Kỷ niệm tiếp theo'
+          : '→ Đọc lời kết';
+        nextBtn.className = 'next-scene-btn';
+        nextBtn.addEventListener('click', () => {
+          this.loadScene(nextIndex);
+        }, { once: true });
+        this.mediaContainer.appendChild(nextBtn);
+      }
     } else if (hasNext) {
-      // Fallback: GSAP không tải được
-      setTimeout(() => this.loadScene(nextIndex), 1200);
+      // Không có media: chuyển tự động sau 600ms
+      setTimeout(() => this.loadScene(nextIndex), 600);
     }
   }
 
@@ -507,14 +378,11 @@ class GameController {
   // ══════════════════════════════════════════════════════════════
   // handleScenesUpdate(newScenesData) — xử lý real-time update
   //   Được gọi khi Firestore gửi snapshot mới (không reload trang).
-  //   Cập nhật đường path SVG và header scene hiện tại.
+  //   Cập nhật header scene hiện tại.
   //   KHÔNG reset game state (người chơi vẫn ở scene cũ).
   // ══════════════════════════════════════════════════════════════
   handleScenesUpdate(newScenesData) {
     this.scenesData = newScenesData;
-
-    // Vẽ lại path với số lượng scene mới (pathCoordinate sẽ được tính lại)
-    this.buildJourneyPath();
 
     // Nếu currentSceneIndex vẫn hợp lệ: cập nhật header nhẹ nhàng
     if (this.currentSceneIndex < newScenesData.length) {
@@ -2729,7 +2597,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function startGame(scenesData) {
     if (window.__LJ_GAME) return; // ngăn khởi tạo trùng lặp
     const game = new GameController(scenesData);
-    game.buildJourneyPath();
     game.loadScene(0);
     window.__LJ_GAME = game;
   }

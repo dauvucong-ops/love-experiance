@@ -7,11 +7,7 @@
   <title>Our Love Journey</title>
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="./style.css?v=1">
-
-  <!-- GSAP 3.12.5 & MotionPathPlugin CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/MotionPathPlugin.min.js"></script>
+  <link rel="stylesheet" href="./style.css?v=2">
 </head>
 <body>
   <!-- Tab 1: Kỷ niệm / Hành trình (Chứa toàn bộ #scene-container hiện có) -->
@@ -27,19 +23,6 @@
           </svg>
           <span id="edit-badge" class="edit-badge hidden">Đang chỉnh sửa</span>
         </button>
-      </div>
-
-      <!-- Khu vực bản đồ / SVG Path & Nhân vật -->
-      <div id="map-container">
-        <svg id="journey-svg" viewBox="0 0 1000 600" xmlns="http://www.w3.org/2000/svg">
-          <!-- Đường dẫn (Path) mẫu kết nối 7 điểm mốc -->
-          <path id="journey-path" d="" fill="none" stroke="transparent" />
-          
-          <!-- Nhân vật di chuyển dọc path -->
-          <g id="character">
-            <!-- Placeholder hình nhân vật -->
-          </g>
-        </svg>
       </div>
 
       <!-- Khu vực hiển thị câu hỏi trắc nghiệm & tương tác (Scene 1-6 full-screen) -->
@@ -585,9 +568,9 @@
   <script src="./data.js"></script>
 
   <!-- Firebase bridge (ES Module) -->
-  <script type="module" src="./firebase-bridge.js?v=1"></script>
+  <script type="module" src="./firebase-bridge.js?v=2"></script>
 
   <!-- Logic game -->
-  <script src="./main.js?v=1"></script>
+  <script src="./main.js?v=2"></script>
 </body>
 </html>

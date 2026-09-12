@@ -57,6 +57,7 @@ class GameController {
     this.currentQuestionIndex = 0;
     this.isSceneUnlocked = false;
     this.isEditMode = false;
+    this.activeTab = 'journey';
 
     // ─── Tham chiếu DOM cố định ───────────────────────────────
     this.journeyPath    = document.getElementById('journey-path');
@@ -573,16 +574,29 @@ class GameController {
     container.addEventListener('touchend', (e) => {
       if (e.changedTouches.length !== 1) return;
 
-      // 1. Không bắt cử chỉ vuốt khi đang mở bất kỳ modal nào (PIN, Sửa, Thêm)
+      // 0. Chỉ xử lý vuốt khi đang ở tab Hành trình
+      if (this.activeTab && this.activeTab !== 'journey') return;
+
+      // 1. Không bắt cử chỉ vuốt khi đang mở bất kỳ modal nào
       const isAnyModalOpen =
         (this.pinModal && !this.pinModal.classList.contains('hidden')) ||
         (this.editSceneModal && !this.editSceneModal.classList.contains('hidden')) ||
-        (this.addSceneModal && !this.addSceneModal.classList.contains('hidden'));
+        (this.addSceneModal && !this.addSceneModal.classList.contains('hidden')) ||
+        (this.addPhotoModal && !this.addPhotoModal.classList.contains('hidden')) ||
+        (this.profileViewModal && !this.profileViewModal.classList.contains('hidden')) ||
+        (this.profileEditModal && !this.profileEditModal.classList.contains('hidden'));
       if (isAnyModalOpen) return;
 
-      // 2. Không bắt cử chỉ vuốt khi tương tác với cụm nút admin, form controls
+      // 2. Không bắt cử chỉ vuốt khi tương tác với cụm nút admin, thanh nav, form controls
       const target = e.target;
-      if (target.closest('#edit-controls-container, input, textarea, select')) return;
+      if (target.closest('#edit-controls-container, #bottom-nav, .bottom-nav, input, textarea, select')) return;
+
+      // 3. Xung đột thanh nav & thanh cử chỉ OS: Bỏ qua nếu touchstart quá sát đáy hoặc nằm trong vùng nav
+      const bottomNav = document.getElementById('bottom-nav');
+      const navRect = bottomNav ? bottomNav.getBoundingClientRect() : null;
+      // Nút Hành Trình ở giữa nhô lên 14px, lấy thêm vùng đệm an toàn 15px -> cách đỉnh nav 15px
+      const bottomThreshold = navRect ? (navRect.top - 15) : (window.innerHeight - 90);
+      if (startY >= bottomThreshold) return;
 
       const touch = e.changedTouches[0];
       const deltaX = startX - touch.clientX;

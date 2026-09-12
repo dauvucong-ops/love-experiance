@@ -40,6 +40,7 @@ class GameController {
   constructor(scenesData) {
     this.scenesData = scenesData;
     this.currentSceneIndex = 0;
+    this.isEditMode = false;
 
     // ─── Tham chiếu DOM cố định ───────────────────────────────
     this.journeyPath    = document.getElementById('journey-path');
@@ -60,6 +61,18 @@ class GameController {
     this.epilogueContainer = document.getElementById('epilogue-container');
     this.epilogueTitle  = document.getElementById('epilogue-title');
     this.epilogueMessage = document.getElementById('epilogue-message');
+
+    // Tham chiếu DOM chế độ chỉnh sửa & PIN modal
+    this.editModeBtn    = document.getElementById('edit-mode-btn');
+    this.editBadge      = document.getElementById('edit-badge');
+    this.pinModal       = document.getElementById('pin-modal');
+    this.pinInput       = document.getElementById('pin-input');
+    this.pinConfirmBtn  = document.getElementById('pin-confirm-btn');
+    this.pinCancelBtn   = document.getElementById('pin-cancel-btn');
+    this.pinErrorMsg    = document.getElementById('pin-error-msg');
+
+    // Khởi tạo chế độ chỉnh sửa & PIN modal
+    this.initEditMode();
 
     // Đăng ký GSAP MotionPathPlugin
     if (typeof gsap !== 'undefined' && typeof MotionPathPlugin !== 'undefined') {
@@ -394,6 +407,181 @@ class GameController {
     } else {
       // Scene hiện tại bị xoá khỏi Firestore → về scene cuối cùng còn lại
       this.loadScene(newScenesData.length - 1);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // QUẢN LÝ CHẾ ĐỘ CHỈNH SỬA & XÁC THỰC PIN
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * Khởi tạo các sự kiện và trạng thái cho chế độ chỉnh sửa
+   */
+  initEditMode() {
+    // 1. Phục hồi trạng thái edit mode từ sessionStorage trong phiên làm việc
+    const savedEditMode = sessionStorage.getItem('isEditMode') === 'true';
+    this.setEditMode(savedEditMode);
+
+    if (!this.editModeBtn) return;
+
+    // 2. Click nút edit-mode-btn: mở modal nếu chưa bật, hoặc hỏi xác nhận tắt nếu đang bật
+    this.editModeBtn.addEventListener('click', () => {
+      if (this.isEditMode) {
+        if (confirm('Bạn đang ở chế độ chỉnh sửa. Bạn có muốn thoát chế độ này không?')) {
+          this.setEditMode(false);
+        }
+      } else {
+        this.openPinModal();
+      }
+    });
+
+    // 3. Sự kiện modal xác nhận PIN
+    if (this.pinConfirmBtn) {
+      this.pinConfirmBtn.addEventListener('click', () => this.verifyPin());
+    }
+
+    if (this.pinCancelBtn) {
+      this.pinCancelBtn.addEventListener('click', () => this.closePinModal());
+    }
+
+    if (this.pinInput) {
+      this.pinInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.verifyPin();
+        } else if (e.key === 'Escape') {
+          this.closePinModal();
+        }
+      });
+
+      this.pinInput.addEventListener('input', () => {
+        if (this.pinErrorMsg) {
+          this.pinErrorMsg.classList.add('hidden');
+          this.pinErrorMsg.textContent = '';
+        }
+        this.pinInput.classList.remove('is-invalid');
+      });
+    }
+
+    // Đóng modal khi click ra ngoài overlay
+    if (this.pinModal) {
+      this.pinModal.addEventListener('click', (e) => {
+        if (e.target === this.pinModal) {
+          this.closePinModal();
+        }
+      });
+    }
+
+    // Phím Escape đóng modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.pinModal && !this.pinModal.classList.contains('hidden')) {
+        this.closePinModal();
+      }
+    });
+  }
+
+  /**
+   * Mở modal nhập PIN
+   */
+  openPinModal() {
+    if (!this.pinModal) return;
+    if (this.pinInput) {
+      this.pinInput.value = '';
+      this.pinInput.classList.remove('is-invalid');
+    }
+    if (this.pinErrorMsg) {
+      this.pinErrorMsg.classList.add('hidden');
+      this.pinErrorMsg.textContent = '';
+    }
+    this.pinModal.classList.remove('hidden');
+    setTimeout(() => {
+      if (this.pinInput) this.pinInput.focus();
+    }, 100);
+  }
+
+  /**
+   * Đóng modal nhập PIN
+   */
+  closePinModal() {
+    if (!this.pinModal) return;
+    this.pinModal.classList.add('hidden');
+    if (this.pinInput) {
+      this.pinInput.value = '';
+      this.pinInput.classList.remove('is-invalid');
+    }
+    if (this.pinErrorMsg) {
+      this.pinErrorMsg.classList.add('hidden');
+      this.pinErrorMsg.textContent = '';
+    }
+  }
+
+  /**
+   * Kiểm tra mã PIN nhập vào
+   */
+  verifyPin() {
+    const enteredPin = this.pinInput ? this.pinInput.value.trim() : '';
+    // Đọc mã PIN từ cấu hình APP_CONFIG (không hardcode trong main.js)
+    const configuredPin = window.APP_CONFIG?.adminPin ? String(window.APP_CONFIG.adminPin).trim() : '';
+
+    if (!enteredPin) {
+      this.showPinError('Vui lòng nhập mã PIN.');
+      return;
+    }
+
+    if (configuredPin && enteredPin === configuredPin) {
+      this.setEditMode(true);
+      this.closePinModal();
+    } else {
+      this.showPinError('Mã PIN không đúng. Vui lòng thử lại.');
+    }
+  }
+
+  /**
+   * Hiển thị thông báo lỗi trong modal (không ném lỗi console)
+   * @param {string} msg 
+   */
+  showPinError(msg) {
+    if (this.pinErrorMsg) {
+      this.pinErrorMsg.textContent = msg;
+      this.pinErrorMsg.classList.remove('hidden');
+    }
+    if (this.pinInput) {
+      this.pinInput.classList.remove('is-invalid');
+      void this.pinInput.offsetWidth; // trigger reflow cho rung lắc animation
+      this.pinInput.classList.add('is-invalid');
+      this.pinInput.focus();
+      this.pinInput.select();
+    }
+  }
+
+  /**
+   * Cập nhật trạng thái chế độ chỉnh sửa (isEditMode) và lưu vào sessionStorage
+   * @param {boolean} isActive 
+   */
+  setEditMode(isActive) {
+    this.isEditMode = Boolean(isActive);
+    if (this.isEditMode) {
+      sessionStorage.setItem('isEditMode', 'true');
+      if (this.editModeBtn) {
+        this.editModeBtn.classList.add('is-active');
+        this.editModeBtn.setAttribute('title', 'Đang ở chế độ chỉnh sửa (Bấm để thoát)');
+        this.editModeBtn.setAttribute('aria-label', 'Đang ở chế độ chỉnh sửa (Bấm để thoát)');
+      }
+      if (this.editBadge) {
+        this.editBadge.classList.remove('hidden');
+      }
+      document.body.classList.add('edit-mode-active');
+    } else {
+      sessionStorage.removeItem('isEditMode');
+      if (this.editModeBtn) {
+        this.editModeBtn.classList.remove('is-active');
+        this.editModeBtn.setAttribute('title', 'Bật chế độ chỉnh sửa');
+        this.editModeBtn.setAttribute('aria-label', 'Bật chế độ chỉnh sửa');
+      }
+      if (this.editBadge) {
+        this.editBadge.classList.add('hidden');
+      }
+      document.body.classList.remove('edit-mode-active');
     }
   }
 }

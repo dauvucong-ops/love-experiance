@@ -29,6 +29,7 @@ class GameController {
     this.activeTab = 'journey';
 
     // ─── Tham chiếu DOM cố định ───────────────────────────────
+    this.miniProgressTrack = document.getElementById('mini-progress-track');
     this.sceneIndicator = document.getElementById('scene-indicator');
     this.sceneTitle     = document.getElementById('scene-title');
     this.journalContainer = document.getElementById('journal-container');
@@ -115,6 +116,7 @@ class GameController {
     // Header luôn hiện
     this.sceneIndicator.textContent = `Kỷ niệm ${index + 1}`;
     this.sceneTitle.textContent = stripSceneOrdinalPrefix(scene.sceneName);
+    this._renderMiniProgress();
 
     // ── EPILOGUE: scene không có câu hỏi ──────────────────────
     if (scene.question === null) {
@@ -192,6 +194,96 @@ class GameController {
       span.style.animationDelay = `${0.45 + idx * 0.3}s`;
       span.textContent = lineText;
       this.epilogueMessage.appendChild(span);
+    });
+  }
+
+  // ── Render / Cập nhật dải tiến trình mini trang trí (không điều hướng) ──
+  _renderMiniProgress() {
+    if (!this.miniProgressTrack) return;
+    const count = Array.isArray(this.scenesData) ? this.scenesData.length : 0;
+    if (count <= 1) {
+      this.miniProgressTrack.innerHTML = '';
+      return;
+    }
+
+    const paddingX = 14;
+    const dx = 32;
+    const svgWidth = paddingX * 2 + (count - 1) * dx;
+    const svgHeight = 34;
+
+    const points = [];
+    for (let i = 0; i < count; i++) {
+      const x = paddingX + i * dx;
+      const y = (i % 2 === 0) ? 14 : 20; // Sóng lượn nhẹ 6px
+      points.push({ x, y });
+    }
+
+    // Vẽ các đoạn cong nối giữa 2 node liên tiếp
+    let pathsHtml = '';
+    for (let i = 0; i < count - 1; i++) {
+      const p0 = points[i];
+      const p1 = points[i + 1];
+      const cpX = p0.x + (p1.x - p0.x) * 0.5;
+      const d = `M ${p0.x} ${p0.y} C ${cpX} ${p0.y}, ${cpX} ${p1.y}, ${p1.x} ${p1.y}`;
+      const isActive = i < this.currentSceneIndex;
+      pathsHtml += `<path class="mini-progress-segment ${isActive ? 'is-active' : ''}" d="${d}" />`;
+    }
+
+    // Vẽ các chấm mốc tiến trình
+    let dotsHtml = '';
+    points.forEach((pt, i) => {
+      let statusClass = 'locked';
+      if (i < this.currentSceneIndex) statusClass = 'unlocked';
+      else if (i === this.currentSceneIndex) statusClass = 'current';
+
+      dotsHtml += `
+        <circle class="mini-progress-dot ${statusClass}"
+                cx="${pt.x}" cy="${pt.y}"
+                r="${i === this.currentSceneIndex ? 4.5 : (i < this.currentSceneIndex ? 4 : 3.5)}" />
+      `;
+    });
+
+    // Marker trái tim nhấp nháy tại mốc hiện tại
+    const curIndex = Math.min(Math.max(0, this.currentSceneIndex), count - 1);
+    const curPt = points[curIndex] || points[0];
+    const heartHtml = `
+      <g class="mini-heart-marker" transform="translate(${curPt.x}, ${curPt.y})">
+        <circle class="mini-heart-halo" cx="0" cy="0" r="10" />
+        <text class="mini-heart-icon" x="0" y="0" text-anchor="middle" dominant-baseline="central">❤</text>
+      </g>
+    `;
+
+    this.miniProgressTrack.innerHTML = `
+      <svg class="mini-progress-svg"
+           viewBox="0 0 ${svgWidth} ${svgHeight}"
+           style="width: ${svgWidth}px; height: ${svgHeight}px;"
+           xmlns="http://www.w3.org/2000/svg">
+        <g class="mini-segments-group">${pathsHtml}</g>
+        <g class="mini-dots-group">${dotsHtml}</g>
+        ${heartHtml}
+      </svg>
+    `;
+
+    // Tự động cuộn dải mốc để vị trí hiện tại nằm giữa khung nhìn
+    this._scrollMiniProgressToCenter(curIndex);
+  }
+
+  // ── Cuộn mượt thanh mốc để vị trí hiện tại nằm giữa ──
+  _scrollMiniProgressToCenter(index) {
+    if (!this.miniProgressTrack) return;
+    const paddingX = 14;
+    const dx = 32;
+    const currentX = paddingX + index * dx;
+    requestAnimationFrame(() => {
+      if (!this.miniProgressTrack) return;
+      const containerWidth = this.miniProgressTrack.clientWidth;
+      if (containerWidth > 0) {
+        const targetScrollLeft = currentX - containerWidth / 2;
+        this.miniProgressTrack.scrollTo({
+          left: Math.max(0, targetScrollLeft),
+          behavior: 'smooth'
+        });
+      }
     });
   }
 
@@ -439,6 +531,7 @@ class GameController {
   // ══════════════════════════════════════════════════════════════
   handleScenesUpdate(newScenesData) {
     this.scenesData = newScenesData;
+    this._renderMiniProgress();
 
     // Nếu currentSceneIndex vẫn hợp lệ: cập nhật header nhẹ nhàng
     if (this.currentSceneIndex < newScenesData.length) {

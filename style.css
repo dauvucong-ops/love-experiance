@@ -144,6 +144,114 @@ body {
   animation: fadeInUp 0.4s ease-out;
 }
 
+/* --- Dải tiến trình mini trang trí (#mini-progress-track) --- */
+.mini-progress-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  user-select: none;
+  -webkit-user-select: none;
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  padding: 2px 0;
+  cursor: default;
+}
+
+.mini-progress-container::-webkit-scrollbar {
+  display: none;
+}
+
+.mini-progress-svg {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Đoạn đường cong nối giữa các node */
+.mini-progress-segment {
+  fill: none;
+  stroke: rgba(229, 140, 153, 0.35);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 4 4;
+  transition: stroke 0.35s ease, stroke-width 0.35s ease;
+}
+
+.mini-progress-segment.is-active {
+  stroke: var(--primary-color);
+  stroke-width: 2.5;
+  stroke-dasharray: none;
+  filter: drop-shadow(0 1px 2px rgba(184, 74, 91, 0.2));
+}
+
+/* Các chấm mốc */
+.mini-progress-dot {
+  transition: all 0.3s ease;
+}
+
+.mini-progress-dot.locked {
+  fill: #fff7f5;
+  stroke: rgba(229, 140, 153, 0.45);
+  stroke-width: 1.5;
+}
+
+.mini-progress-dot.unlocked {
+  fill: var(--primary-color);
+  stroke: #ffffff;
+  stroke-width: 1.8;
+  filter: drop-shadow(0 1px 3px rgba(184, 74, 91, 0.3));
+}
+
+.mini-progress-dot.current {
+  fill: var(--primary-color);
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+/* Marker trái tim tại vị trí hiện tại */
+.mini-heart-marker {
+  pointer-events: none;
+}
+
+.mini-heart-halo {
+  fill: rgba(184, 74, 91, 0.16);
+  animation: miniHaloPulse 1.8s infinite ease-in-out;
+}
+
+.mini-heart-icon {
+  font-size: 13px;
+  fill: var(--primary-color);
+  animation: miniHeartPulse 1.8s infinite ease-in-out;
+  transform-origin: center;
+  filter: drop-shadow(0 2px 4px rgba(184, 74, 91, 0.35));
+}
+
+@keyframes miniHeartPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.24);
+  }
+}
+
+@keyframes miniHaloPulse {
+  0%, 100% {
+    r: 9px;
+    opacity: 0.3;
+  }
+  50% {
+    r: 14px;
+    opacity: 0.75;
+  }
+}
+
 /* Phần trên: Tiêu đề kỷ niệm + Số đếm */
 #scene-info {
   display: flex;

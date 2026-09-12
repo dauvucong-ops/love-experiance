@@ -15,7 +15,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="./style.css?v=3">
+  <link rel="stylesheet" href="./style.css?v=4">
 </head>
 <body>
   <!-- Tab 1: Kỷ niệm / Hành trình (Chứa toàn bộ #scene-container hiện có) -->
@@ -37,6 +37,7 @@
       <section id="quiz-container" class="scene-screen" aria-live="polite">
         <!-- Phần trên: Số đếm kỷ niệm + Tên kỷ niệm -->
         <header id="scene-info">
+          <div id="mini-progress-track" class="mini-progress-container" aria-hidden="true"></div>
           <span id="scene-indicator"></span>
           <h1 id="scene-title"></h1>
         </header>
@@ -576,9 +577,9 @@
   <script src="./data.js"></script>
 
   <!-- Firebase bridge (ES Module) -->
-  <script type="module" src="./firebase-bridge.js?v=3"></script>
+  <script type="module" src="./firebase-bridge.js?v=4"></script>
 
   <!-- Logic game -->
-  <script src="./main.js?v=3"></script>
+  <script src="./main.js?v=4"></script>
 </body>
 </html>

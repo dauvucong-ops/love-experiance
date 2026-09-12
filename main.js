@@ -28,6 +28,10 @@ class GameController {
     this.isEditMode = false;
     this.activeTab = 'journey';
 
+    // Mốc kỷ niệm mở khoá cao nhất (Review Mode - Phase Xem lại kỷ niệm)
+    const storedMax = sessionStorage.getItem('lj_max_unlocked_index');
+    this.maxUnlockedIndex = storedMax !== null ? (parseInt(storedMax, 10) || 0) : 0;
+
     // ─── Tham chiếu DOM cố định ───────────────────────────────
     this.miniProgressTrack = document.getElementById('mini-progress-track');
     this.sceneIndicator = document.getElementById('scene-indicator');
@@ -71,6 +75,9 @@ class GameController {
 
     // Khởi tạo Ghi chú về 2 người (Profiles - Phase 3)
     this.initProfiles();
+
+    // Khởi tạo Review Mode & Modal xem lại câu đố
+    this.initReviewQuizModal();
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -95,6 +102,11 @@ class GameController {
     this.epilogueContainer.classList.add('hidden');
     this.quizContainer.classList.remove('hidden');
 
+    // Reset Review Mode controls
+    if (this.returnCurrentBtn) this.returnCurrentBtn.classList.add('hidden');
+    if (this.reviewControls) this.reviewControls.classList.add('hidden');
+    if (this.continueBtn) this.continueBtn.classList.remove('hidden');
+
     // Xoá listener cũ của #continue-btn bằng clone-replace
     const newBtn = this.continueBtn.cloneNode(true);
     this.continueBtn.parentNode.replaceChild(newBtn, this.continueBtn);
@@ -111,12 +123,62 @@ class GameController {
 
     this._resetUI();
     this.currentQuestionIndex = 0;
-    this.isSceneUnlocked = false;
 
     // Header luôn hiện
     this.sceneIndicator.textContent = `Kỷ niệm ${index + 1}`;
     this.sceneTitle.textContent = stripSceneOrdinalPrefix(scene.sceneName);
     this._renderMiniProgress();
+
+    const isReviewMode = index < this.maxUnlockedIndex;
+
+    // ── REVIEW MODE: Kỷ niệm cũ đã mở khoá trước đó ─────────────
+    if (isReviewMode) {
+      this.isSceneUnlocked = true;
+
+      // Nút nổi quay lại kỷ niệm hiện tại (chỉ hiện khi đang ở tab Hành trình)
+      if (this.returnCurrentBtn && this.activeTab === 'journey') {
+        this.returnCurrentBtn.classList.remove('hidden');
+      }
+
+      // Nút xem câu đố (chỉ hiện nếu scene có câu hỏi)
+      const hasQuestions = (Array.isArray(scene.questions) && scene.questions.length > 0) || Boolean(scene.question);
+      if (hasQuestions && this.reviewControls) {
+        this.reviewControls.classList.remove('hidden');
+      }
+
+      // Hiện ngay nhật ký (không ẩn, không bắt bấm Tiếp tục)
+      if (scene.journalEntry) {
+        this.journalText.textContent = scene.journalEntry;
+        this.journalContainer.classList.remove('hidden');
+        if (this.continueBtn) this.continueBtn.classList.add('hidden');
+      }
+
+      // Ẩn hoàn toàn form câu hỏi
+      this.questionBox.classList.add('hidden');
+
+      // Hiện media sau mở khoá nếu có
+      if (scene.mediaAfterUnlock && scene.mediaAfterUnlock.src) {
+        this._renderMedia(scene.mediaAfterUnlock, this.mediaContainer);
+      }
+
+      // Nút chuyển tiếp (nếu có scene sau)
+      if (index < this.scenesData.length - 1) {
+        const nextBtn = document.createElement('button');
+        nextBtn.textContent = index < this.scenesData.length - 2
+          ? '→ Kỷ niệm tiếp theo'
+          : '→ Đọc lời kết';
+        nextBtn.className = 'next-scene-btn';
+        nextBtn.addEventListener('click', () => {
+          this.loadScene(index + 1);
+        }, { once: true });
+        this.mediaContainer.appendChild(nextBtn);
+      }
+      this.mediaContainer.classList.remove('hidden');
+      return;
+    }
+
+    // ── NORMAL MODE: Kỷ niệm đang chơi dở hoặc mới nhất ─────────
+    this.isSceneUnlocked = false;
 
     // ── EPILOGUE: scene không có câu hỏi ──────────────────────
     if (scene.question === null) {
@@ -197,7 +259,7 @@ class GameController {
     });
   }
 
-  // ── Render / Cập nhật dải tiến trình mini trang trí (không điều hướng) ──
+  // ── Render / Cập nhật dải tiến trình mini (chấm cũ chạm được để xem lại) ──
   _renderMiniProgress() {
     if (!this.miniProgressTrack) return;
     const count = Array.isArray(this.scenesData) ? this.scenesData.length : 0;
@@ -209,7 +271,7 @@ class GameController {
     const paddingX = 14;
     const dx = 32;
     const svgWidth = paddingX * 2 + (count - 1) * dx;
-    const svgHeight = 34;
+    const svgHeight = 36;
 
     const points = [];
     for (let i = 0; i < count; i++) {
@@ -220,26 +282,39 @@ class GameController {
 
     // Vẽ các đoạn cong nối giữa 2 node liên tiếp
     let pathsHtml = '';
+    const activeThreshold = Math.max(this.currentSceneIndex, this.maxUnlockedIndex);
     for (let i = 0; i < count - 1; i++) {
       const p0 = points[i];
       const p1 = points[i + 1];
       const cpX = p0.x + (p1.x - p0.x) * 0.5;
       const d = `M ${p0.x} ${p0.y} C ${cpX} ${p0.y}, ${cpX} ${p1.y}, ${p1.x} ${p1.y}`;
-      const isActive = i < this.currentSceneIndex;
+      const isActive = i < activeThreshold;
       pathsHtml += `<path class="mini-progress-segment ${isActive ? 'is-active' : ''}" d="${d}" />`;
     }
 
-    // Vẽ các chấm mốc tiến trình
+    // Vẽ các chấm mốc tiến trình & hitbox cảm ứng ~36px (cho phép chạm vào mốc cũ)
     let dotsHtml = '';
     points.forEach((pt, i) => {
       let statusClass = 'locked';
-      if (i < this.currentSceneIndex) statusClass = 'unlocked';
-      else if (i === this.currentSceneIndex) statusClass = 'current';
+      if (i === this.currentSceneIndex) {
+        statusClass = 'current';
+      } else if (i <= this.maxUnlockedIndex) {
+        statusClass = 'unlocked';
+      }
+
+      const isClickable = (i <= this.maxUnlockedIndex && i !== this.currentSceneIndex);
 
       dotsHtml += `
-        <circle class="mini-progress-dot ${statusClass}"
+        <circle class="mini-progress-dot ${statusClass} ${isClickable ? 'is-clickable' : ''}"
                 cx="${pt.x}" cy="${pt.y}"
-                r="${i === this.currentSceneIndex ? 4.5 : (i < this.currentSceneIndex ? 4 : 3.5)}" />
+                r="${i === this.currentSceneIndex ? 4.5 : (i <= this.maxUnlockedIndex ? 4 : 3.5)}" />
+        ${isClickable ? `
+          <circle class="mini-dot-hitbox"
+                  data-index="${i}"
+                  cx="${pt.x}" cy="${pt.y}"
+                  r="18"
+                  fill="transparent" />
+        ` : ''}
       `;
     });
 
@@ -263,6 +338,19 @@ class GameController {
         ${heartHtml}
       </svg>
     `;
+
+    // Gán sự kiện chạm vào mốc mốc cũ (gắn 1 lần duy nhất)
+    if (!this._miniProgressBound) {
+      this.miniProgressTrack.addEventListener('click', (e) => {
+        const hitbox = e.target.closest('.mini-dot-hitbox');
+        if (!hitbox) return;
+        const idx = parseInt(hitbox.getAttribute('data-index'), 10);
+        if (!isNaN(idx) && idx <= this.maxUnlockedIndex && idx !== this.currentSceneIndex) {
+          this.loadScene(idx);
+        }
+      });
+      this._miniProgressBound = true;
+    }
 
     // Tự động cuộn dải mốc để vị trí hiện tại nằm giữa khung nhìn
     this._scrollMiniProgressToCenter(curIndex);
@@ -480,6 +568,11 @@ class GameController {
     const nextIndex = this.currentSceneIndex + 1;
     const hasNext = nextIndex < this.scenesData.length;
 
+    // Cập nhật mốc mở khoá cao nhất & lưu sessionStorage
+    this.maxUnlockedIndex = Math.max(this.maxUnlockedIndex, nextIndex);
+    sessionStorage.setItem('lj_max_unlocked_index', String(this.maxUnlockedIndex));
+    this._renderMiniProgress();
+
     // ── Hiện media của scene vừa mở khoá ─────────────────────
     if (scene.mediaAfterUnlock && scene.mediaAfterUnlock.src) {
       this._renderMedia(scene.mediaAfterUnlock, this.mediaContainer);
@@ -530,10 +623,26 @@ class GameController {
   //   KHÔNG reset game state (người chơi vẫn ở scene cũ).
   // ══════════════════════════════════════════════════════════════
   handleScenesUpdate(newScenesData) {
+    const isDeletion = newScenesData.length < this.scenesData.length;
     this.scenesData = newScenesData;
     this._renderMiniProgress();
 
-    // Nếu currentSceneIndex vẫn hợp lệ: cập nhật header nhẹ nhàng
+    // Trường hợp xoá kỷ niệm: các kỷ niệm phía sau bị dồn index lên
+    // LUÔN gọi loadScene để reset UI, ép khoá lại kỷ niệm dồn lên (isSceneUnlocked = false)
+    if (isDeletion) {
+      const oldMax = this.maxUnlockedIndex;
+      const deletedIndex = this.currentSceneIndex;
+      let newMax = deletedIndex < oldMax ? oldMax - 1 : oldMax;
+      newMax = Math.max(0, Math.min(newMax, newScenesData.length - 1));
+      this.maxUnlockedIndex = newMax;
+      sessionStorage.setItem('lj_max_unlocked_index', String(this.maxUnlockedIndex));
+
+      const targetIndex = Math.min(this.currentSceneIndex, newScenesData.length - 1);
+      this.loadScene(targetIndex);
+      return;
+    }
+
+    // Nếu currentSceneIndex vẫn hợp lệ: cập nhật header nhẹ nhàng (trường hợp sửa text/không xoá)
     if (this.currentSceneIndex < newScenesData.length) {
       const scene = newScenesData[this.currentSceneIndex];
       this.sceneIndicator.textContent = `Kỷ niệm ${this.currentSceneIndex + 1}`;
@@ -561,7 +670,7 @@ class GameController {
       }
     } else {
       // Scene hiện tại bị xoá khỏi Firestore → về scene cuối cùng còn lại
-      this.loadScene(newScenesData.length - 1);
+      this.loadScene(Math.max(0, newScenesData.length - 1));
     }
   }
 
@@ -601,7 +710,8 @@ class GameController {
         (this.addSceneModal && !this.addSceneModal.classList.contains('hidden')) ||
         (this.addPhotoModal && !this.addPhotoModal.classList.contains('hidden')) ||
         (this.profileViewModal && !this.profileViewModal.classList.contains('hidden')) ||
-        (this.profileEditModal && !this.profileEditModal.classList.contains('hidden'));
+        (this.profileEditModal && !this.profileEditModal.classList.contains('hidden')) ||
+        (this.reviewQuizModal && !this.reviewQuizModal.classList.contains('hidden'));
       if (isAnyModalOpen) return;
 
       // 2. Không bắt cử chỉ vuốt khi tương tác với cụm nút admin, thanh nav, form controls
@@ -620,19 +730,29 @@ class GameController {
       const deltaY = startY - touch.clientY;
       const duration = Date.now() - startTime;
 
-      // 3. Tiêu chí vuốt LÊN:
+      // 4. Tiêu chí vuốt LÊN (chuyển tiếp):
       //    - Quãng đường vuốt lên >= 60px
       //    - Định hướng chủ yếu theo phương dọc (deltaY > 1.4 * |deltaX|)
       //    - Thao tác dứt khoát (< 650ms) để không nhầm với giữ/chạm chậm
       const isSwipeUp = deltaY > 60 && Math.abs(deltaY) > Math.abs(deltaX) * 1.4 && duration < 650;
-      if (!isSwipeUp) return;
+      if (isSwipeUp) {
+        // Đảm bảo không xung đột cuộn tự nhiên (chỉ chuyển khi đã đọc tới đáy)
+        if (!this._isScrolledToBottom(target)) return;
+        this._handleSwipeUp();
+        return;
+      }
 
-      // 4. Đảm bảo không xung đột cuộn tự nhiên:
-      //    Nếu phần tử chứa văn bản dài và chưa được cuộn tới đáy,
-      //    để người dùng cuộn đọc hết trước, không kích hoạt chuyển cảnh sớm.
-      if (!this._isScrolledToBottom(target)) return;
-
-      this._handleSwipeUp();
+      // 5. Tiêu chí vuốt XUỐNG (lùi về kỷ niệm cũ):
+      //    - Quãng đường vuốt xuống >= 60px (deltaY < -60)
+      //    - Định hướng chủ yếu theo phương dọc (|deltaY| > 1.4 * |deltaX|)
+      //    - Thao tác dứt khoát (< 650ms)
+      const isSwipeDown = deltaY < -60 && Math.abs(deltaY) > Math.abs(deltaX) * 1.4 && duration < 650;
+      if (isSwipeDown) {
+        // Đảm bảo không xung đột cuộn tự nhiên (chỉ lùi cảnh khi đã ở sát đỉnh)
+        if (!this._isScrolledToTop(target)) return;
+        this._handleSwipeDown();
+        return;
+      }
     }, { passive: true });
   }
 
@@ -661,9 +781,45 @@ class GameController {
   }
 
   /**
+   * Kiểm tra xem phần tử (hoặc các cha scrollable của nó) đã cuộn tới sát đỉnh chưa
+   * @param {HTMLElement} target
+   * @returns {boolean}
+   */
+  _isScrolledToTop(target) {
+    let el = target;
+    while (el && el !== document.body && el !== document.documentElement) {
+      const style = window.getComputedStyle(el);
+      const overflowY = style.overflowY;
+      if (overflowY === 'auto' || overflowY === 'scroll') {
+        if (el.scrollTop > 10) {
+          return false; // Vẫn còn nội dung phía trên, ưu tiên cuộn tự nhiên
+        }
+      }
+      el = el.parentElement;
+    }
+    return true;
+  }
+
+  /**
+   * Xử lý chuyển cảnh khi người dùng vuốt XUỐNG (lùi về kỷ niệm trước đó)
+   */
+  _handleSwipeDown() {
+    if (this.currentSceneIndex > 0) {
+      this.loadScene(this.currentSceneIndex - 1);
+    }
+  }
+
+  /**
    * Xử lý chuyển cảnh khi người dùng vuốt LÊN
    */
   _handleSwipeUp() {
+    // 0. Nếu đang ở Review Mode (kỷ niệm cũ đã mở): vuốt lên chuyển ngay sang cảnh tiếp theo
+    if (this.currentSceneIndex < this.maxUnlockedIndex) {
+      if (this.currentSceneIndex < this.scenesData.length - 1) {
+        this.loadScene(this.currentSceneIndex + 1);
+      }
+      return;
+    }
     // 1. Nếu đang ở màn Nhật ký (chưa sang câu hỏi):
     //    Gọi lại đúng nút #continue-btn để thực thi chung 1 luồng animation và render
     if (this.journalContainer && !this.journalContainer.classList.contains('hidden')) {
@@ -767,6 +923,15 @@ class GameController {
         btn.setAttribute('aria-selected', 'false');
       }
     });
+
+    // 3. Cập nhật hiển thị nút nổi Quay lại kỷ niệm hiện tại
+    if (this.returnCurrentBtn) {
+      if (tabName === 'journey' && this.currentSceneIndex < this.maxUnlockedIndex) {
+        this.returnCurrentBtn.classList.remove('hidden');
+      } else {
+        this.returnCurrentBtn.classList.add('hidden');
+      }
+    }
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -1859,6 +2024,7 @@ class GameController {
     this.editSceneModal    = document.getElementById('edit-scene-modal');
     this.editSceneForm     = document.getElementById('edit-scene-form');
     this.editSceneCloseX   = document.getElementById('edit-scene-close-x');
+    this.editSceneDeleteBtn = document.getElementById('edit-scene-delete-btn');
     this.editSceneCancelBtn = document.getElementById('edit-scene-cancel-btn');
     this.editSceneSaveBtn  = document.getElementById('edit-scene-save-btn');
     this.editSceneErrorMsg = document.getElementById('edit-scene-error-msg');
@@ -1867,6 +2033,7 @@ class GameController {
     this.editQuizFields    = document.getElementById('edit-quiz-fields');
     this.editEpilogueFields = document.getElementById('edit-epilogue-fields');
 
+    this.editSceneName     = document.getElementById('edit-scene-name');
     this.editJournalEntry  = document.getElementById('edit-journal-entry');
     this.editEpilogueMsg   = document.getElementById('edit-epilogue-message');
     this.editMediaUrl      = document.getElementById('edit-media-url');
@@ -1879,6 +2046,10 @@ class GameController {
 
     if (this.editSceneCloseX) {
       this.editSceneCloseX.addEventListener('click', () => this.closeEditSceneModal());
+    }
+
+    if (this.editSceneDeleteBtn) {
+      this.editSceneDeleteBtn.addEventListener('click', () => this.deleteScene());
     }
 
     if (this.editSceneCancelBtn) {
@@ -2255,6 +2426,13 @@ class GameController {
       this.editIsEpilogue.checked = isEpilogue;
     }
 
+    // Nút Xoá kỷ niệm (chỉ hiện cho kỷ niệm thường, ẩn nếu là Epilogue)
+    if (this.editSceneDeleteBtn) {
+      this.editSceneDeleteBtn.classList.toggle('hidden', isEpilogue);
+      this.editSceneDeleteBtn.disabled = false;
+      this.editSceneDeleteBtn.textContent = 'Xoá kỷ niệm';
+    }
+
     // Rẽ nhánh các trường hiển thị theo loại scene
     if (isEpilogue) {
       if (this.editQuizFields) this.editQuizFields.classList.add('hidden');
@@ -2263,6 +2441,9 @@ class GameController {
     } else {
       if (this.editQuizFields) this.editQuizFields.classList.remove('hidden');
       if (this.editEpilogueFields) this.editEpilogueFields.classList.add('hidden');
+      if (this.editSceneName) {
+        this.editSceneName.value = stripSceneOrdinalPrefix(scene.sceneName) || scene.sceneName || '';
+      }
       if (this.editJournalEntry) this.editJournalEntry.value = scene.journalEntry || '';
 
       // Đọc danh sách câu hỏi từ scene.questions (đã chuẩn hoá từ Phase 1/2)
@@ -2373,11 +2554,12 @@ class GameController {
     }
 
     const mediaUrl = this.editMediaUrl ? this.editMediaUrl.value.trim() : '';
+    const customName = this.editSceneName ? this.editSceneName.value.trim() : '';
 
     // 2. Chuẩn bị payload: ghi đè field questions (mảng mới), không cần ghi lại field cũ rời rạc
     const payload = {
       order: Number(scene.id),
-      sceneName: scene.sceneName,
+      sceneName: customName || scene.sceneName || `Kỷ niệm ${this.currentSceneIndex + 1}`,
       isEpilogue: isEpilogue,
       mediaUrl: mediaUrl || null,
       pin: window.APP_CONFIG?.adminPin ? String(window.APP_CONFIG.adminPin).trim() : ''
@@ -2429,6 +2611,160 @@ class GameController {
         this.editSceneSaveBtn.disabled = false;
         this.editSceneSaveBtn.textContent = 'Lưu';
       }
+    }
+  }
+
+  /**
+   * Xoá kỷ niệm hiện tại khỏi Firestore
+   */
+  async deleteScene() {
+    const scene = this.scenesData[this.currentSceneIndex];
+    if (!scene) return;
+
+    if (scene.isEpilogue || scene.question === null) {
+      alert('Không thể xoá cảnh kết thúc (Epilogue).');
+      return;
+    }
+
+    const sceneTitle = stripSceneOrdinalPrefix(scene.sceneName) || `Kỷ niệm ${this.currentSceneIndex + 1}`;
+    const confirmed = window.confirm(`Bạn có chắc chắn muốn xoá "${sceneTitle}"?\nHành động này không thể hoàn tác.`);
+    if (!confirmed) return;
+
+    if (this.editSceneDeleteBtn) {
+      this.editSceneDeleteBtn.disabled = true;
+      this.editSceneDeleteBtn.textContent = 'Đang xoá...';
+    }
+    if (this.editSceneSaveBtn) this.editSceneSaveBtn.disabled = true;
+    if (this.editSceneCancelBtn) this.editSceneCancelBtn.disabled = true;
+
+    const firestoreId = scene.firestoreId || (`scene_${String(scene.id).padStart(2, '0')}`);
+    const pin = window.APP_CONFIG?.adminPin ? String(window.APP_CONFIG.adminPin).trim() : '';
+
+    try {
+      if (typeof window.__LJ_DELETE_MEMORY !== 'function') {
+        throw new Error('Hàm xoá kỷ niệm chưa sẵn sàng.');
+      }
+      await window.__LJ_DELETE_MEMORY(firestoreId, pin);
+      console.log(`[LoveJourney] Đã xoá kỷ niệm ${firestoreId} thành công.`);
+      this.closeEditSceneModal();
+    } catch (err) {
+      console.warn('[LoveJourney] Lỗi khi xoá scene:', err);
+      let errorText = 'Lỗi xoá kỷ niệm: ';
+      if (err && err.code === 'permission-denied') {
+        errorText += 'Không có quyền xoá (mã PIN không khớp Security Rules).';
+      } else {
+        errorText += (err.message || 'Vui lòng thử lại sau.');
+      }
+      this.showEditSceneError(errorText);
+    } finally {
+      if (this.editSceneDeleteBtn) {
+        this.editSceneDeleteBtn.disabled = false;
+        this.editSceneDeleteBtn.textContent = 'Xoá kỷ niệm';
+      }
+      if (this.editSceneSaveBtn) this.editSceneSaveBtn.disabled = false;
+      if (this.editSceneCancelBtn) this.editSceneCancelBtn.disabled = false;
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // QUẢN LÝ MODAL XEM LẠI CÂU ĐỐ (REVIEW QUIZ - CHỈ ĐỌC)
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * Khởi tạo tham chiếu và sự kiện cho Modal xem lại câu đố
+   */
+  initReviewQuizModal() {
+    this.reviewQuizModal    = document.getElementById('review-quiz-modal');
+    this.reviewQuizTitle    = document.getElementById('review-quiz-modal-title');
+    this.reviewQuizContent  = document.getElementById('review-quiz-content');
+    this.reviewQuizCloseX   = document.getElementById('review-quiz-close-x');
+    this.reviewQuizCloseBtn = document.getElementById('review-quiz-close-btn');
+    this.reviewQuizBtn      = document.getElementById('review-quiz-btn');
+    this.reviewControls     = document.getElementById('review-controls');
+    this.returnCurrentBtn   = document.getElementById('return-current-btn');
+
+    if (this.reviewQuizCloseX) {
+      this.reviewQuizCloseX.addEventListener('click', () => this.closeReviewQuizModal());
+    }
+
+    if (this.reviewQuizCloseBtn) {
+      this.reviewQuizCloseBtn.addEventListener('click', () => this.closeReviewQuizModal());
+    }
+
+    if (this.reviewQuizModal) {
+      this.reviewQuizModal.addEventListener('click', (e) => {
+        if (e.target === this.reviewQuizModal) this.closeReviewQuizModal();
+      });
+    }
+
+    if (this.reviewQuizBtn) {
+      this.reviewQuizBtn.addEventListener('click', () => this.openReviewQuizModal());
+    }
+
+    if (this.returnCurrentBtn) {
+      this.returnCurrentBtn.addEventListener('click', () => {
+        this.loadScene(this.maxUnlockedIndex);
+      });
+    }
+  }
+
+  /**
+   * Mở modal xem lại câu đố (chế độ chỉ đọc, tô màu đáp án đúng)
+   */
+  openReviewQuizModal() {
+    const scene = this.scenesData[this.currentSceneIndex];
+    if (!scene || !this.reviewQuizModal) return;
+
+    const title = stripSceneOrdinalPrefix(scene.sceneName) || `Kỷ niệm ${this.currentSceneIndex + 1}`;
+    if (this.reviewQuizTitle) {
+      this.reviewQuizTitle.textContent = `Câu đố: ${title}`;
+    }
+
+    const questions = (Array.isArray(scene.questions) && scene.questions.length > 0)
+      ? scene.questions
+      : (scene.question ? [{
+          question: scene.question,
+          options: scene.options || [],
+          correctAnswer: scene.correctAnswer,
+          hint: scene.hint
+        }] : []);
+
+    if (this.reviewQuizContent) {
+      if (questions.length === 0) {
+        this.reviewQuizContent.innerHTML = '<p style="text-align:center; padding:16px; color:var(--text-muted);">Kỷ niệm này không có câu hỏi trắc nghiệm.</p>';
+      } else {
+        this.reviewQuizContent.innerHTML = questions.map((q, qIdx) => {
+          const optionsHtml = (Array.isArray(q.options) ? q.options : []).map(opt => {
+            const isCorrect = String(opt).trim() === String(q.correctAnswer).trim();
+            return `
+              <div class="review-opt-item ${isCorrect ? 'is-correct-answer' : ''}">
+                <span>${isCorrect ? '✓' : '•'}</span>
+                <span>${opt}</span>
+                ${isCorrect ? '<span class="review-opt-badge">Đáp án đúng</span>' : ''}
+              </div>
+            `;
+          }).join('');
+
+          return `
+            <div class="review-question-card">
+              <div class="review-q-header">Câu ${qIdx + 1}: ${q.question}</div>
+              <div class="review-q-options">${optionsHtml}</div>
+              ${q.hint ? `<div class="review-hint-box">💡 Gợi ý: ${q.hint}</div>` : ''}
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    this.reviewQuizModal.classList.remove('hidden');
+  }
+
+  /**
+   * Đóng modal xem lại câu đố
+   */
+  closeReviewQuizModal() {
+    if (this.reviewQuizModal) {
+      this.reviewQuizModal.classList.add('hidden');
     }
   }
 
@@ -2746,7 +3082,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function startGame(scenesData) {
     if (window.__LJ_GAME) return; // ngăn khởi tạo trùng lặp
     const game = new GameController(scenesData);
-    game.loadScene(0);
+    const startIdx = Math.min(game.maxUnlockedIndex || 0, Math.max(0, scenesData.length - 1));
+    game.loadScene(startIdx);
     window.__LJ_GAME = game;
   }
 

@@ -15,7 +15,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="./style.css?v=4">
+  <link rel="stylesheet" href="./style.css?v=8">
 </head>
 <body>
   <!-- Tab 1: Kỷ niệm / Hành trình (Chứa toàn bộ #scene-container hiện có) -->
@@ -40,6 +40,16 @@
           <div id="mini-progress-track" class="mini-progress-container" aria-hidden="true"></div>
           <span id="scene-indicator"></span>
           <h1 id="scene-title"></h1>
+          <div id="review-controls" class="review-controls hidden">
+            <button type="button" id="review-quiz-btn" class="review-quiz-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <span>Xem câu đố</span>
+            </button>
+          </div>
         </header>
 
         <!-- Khối nhật ký kỷ niệm trước khi hiện câu hỏi -->
@@ -71,6 +81,14 @@
           <p id="epilogue-message"></p>
         </div>
       </section>
+
+      <!-- Nút nổi Quay lại kỷ niệm hiện tại (chỉ hiện trong Review Mode) -->
+      <button type="button" id="return-current-btn" class="return-current-btn hidden" title="Quay lại kỷ niệm đang mở">
+        <span>Quay lại kỷ niệm hiện tại</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
     </main>
   </div>
 
@@ -243,6 +261,12 @@
 
         <!-- Nhóm trường cho scene bình thường (1-6) -->
         <div id="edit-quiz-fields">
+          <!-- Tên / Tiêu đề kỷ niệm -->
+          <div class="form-group" id="edit-scene-name-group">
+            <label for="edit-scene-name">Tên kỷ niệm (Tiêu đề)</label>
+            <input type="text" id="edit-scene-name" placeholder="VD: Buổi chiều ngắm hoàng hôn" />
+          </div>
+
           <div class="form-group">
             <label for="edit-journal-entry">Đoạn nhật ký <span class="req">*</span></label>
             <textarea id="edit-journal-entry" rows="3" placeholder="Nhập đoạn hồi tưởng cảm xúc trước khi hiện câu hỏi..."></textarea>
@@ -285,6 +309,7 @@
         <div id="edit-scene-error-msg" class="pin-error-msg hidden"></div>
 
         <div class="edit-modal-actions">
+          <button type="button" id="edit-scene-delete-btn" class="pin-btn pin-btn-delete">Xoá kỷ niệm</button>
           <button type="button" id="edit-scene-cancel-btn" class="pin-btn pin-btn-cancel">Huỷ</button>
           <button type="submit" id="edit-scene-save-btn" class="pin-btn pin-btn-confirm">Lưu</button>
         </div>
@@ -562,6 +587,22 @@
     </div>
   </div>
 
+  <!-- Modal Xem Lại Câu Đố (Review Quiz Modal - Chỉ Đọc) -->
+  <div id="review-quiz-modal" class="pin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="review-quiz-modal-title">
+    <div class="pin-modal-card review-quiz-modal-card">
+      <div class="edit-modal-header">
+        <h3 id="review-quiz-modal-title">Câu đố kỷ niệm</h3>
+        <button type="button" id="review-quiz-close-x" class="edit-modal-close-x" aria-label="Đóng">&times;</button>
+      </div>
+      <div id="review-quiz-content" class="review-quiz-content">
+        <!-- Render động danh sách câu hỏi & đáp án đúng -->
+      </div>
+      <div class="edit-modal-actions">
+        <button type="button" id="review-quiz-close-btn" class="pin-btn pin-btn-confirm">Đóng</button>
+      </div>
+    </div>
+  </div>
+
   <!--
     THỨ TỰ SCRIPT (bắt buộc):
     1. firebase-config.js  — classic, expose window.FIREBASE_CONFIG
@@ -577,9 +618,9 @@
   <script src="./data.js"></script>
 
   <!-- Firebase bridge (ES Module) -->
-  <script type="module" src="./firebase-bridge.js?v=4"></script>
+  <script type="module" src="./firebase-bridge.js?v=8"></script>
 
   <!-- Logic game -->
-  <script src="./main.js?v=4"></script>
+  <script src="./main.js?v=8"></script>
 </body>
 </html>

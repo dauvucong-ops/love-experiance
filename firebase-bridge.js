@@ -51,6 +51,12 @@ window.__LJ_DELETE_GALLERY_ITEM = async function(firestoreId) {
   return await deleteDoc(docRef);
 };
 
+// Expose helper xoá kỷ niệm khỏi collection "memories"
+window.__LJ_DELETE_MEMORY = async function(firestoreId, pin) {
+  const docRef = doc(db, 'memories', firestoreId);
+  return await deleteDoc(docRef);
+};
+
 // Expose helper cập nhật hồ sơ trong collection "profiles" (Phase 3)
 window.__LJ_UPDATE_PROFILE = async function(personId, profileData) {
   const docRef = doc(db, 'profiles', personId);

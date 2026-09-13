@@ -80,6 +80,18 @@ window.__LJ_UPDATE_PROFILE = async function(personId, profileData) {
   return await setDoc(docRef, profileData, { merge: true });
 };
 
+// Expose helper gửi góp ý mới vào collection "feedbacks" (không cần mã PIN)
+window.__LJ_SEND_FEEDBACK = async function(feedbackData) {
+  const colRef = collection(db, 'feedbacks');
+  return await addDoc(colRef, feedbackData);
+};
+
+// Expose helper xoá góp ý khỏi collection "feedbacks" sau khi người nhận xem xong (không cần mã PIN)
+window.__LJ_DELETE_FEEDBACK = async function(feedbackId) {
+  const docRef = doc(db, 'feedbacks', feedbackId);
+  return await deleteDoc(docRef);
+};
+
 // ── Helper: đoán loại media từ đuôi file / URL ──────────────────────────────
 function detectMediaType(url) {
   if (!url) return null;
@@ -223,6 +235,25 @@ onSnapshot(
   },
   (error) => {
     console.warn('[LoveJourney] Firestore profiles error:', error.code, error.message);
+  }
+);
+
+// ── onSnapshot listener cho collection "feedbacks" (Hộp thư góp ý) ───────────
+const feedbacksQuery = query(collection(db, 'feedbacks'), orderBy('createdAt', 'desc'));
+
+onSnapshot(
+  feedbacksQuery,
+  (snapshot) => {
+    const feedbacks = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    window.dispatchEvent(
+      new CustomEvent('lj:feedbacksUpdated', { detail: { feedbacks } })
+    );
+  },
+  (error) => {
+    console.warn('[LoveJourney] Firestore feedbacks error:', error.code, error.message);
   }
 );
 

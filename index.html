@@ -15,7 +15,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="./style.css?v=15">
+  <link rel="stylesheet" href="./style.css?v=19">
 </head>
 <body>
   <!-- Tab 1: Kỷ niệm / Hành trình (Chứa toàn bộ #scene-container hiện có) -->
@@ -168,14 +168,28 @@
     </div>
   </div>
 
-  <!-- Tab 3: Ghi chú về 2 người (Profiles) -->
+  <!-- Tab 3: Ghi chú về 2 người (Profiles & Hộp thư góp ý) -->
   <div id="tab-notes" class="tab-panel hidden">
     <div class="profiles-container">
-      <!-- Header của Profiles -->
+      <!-- Header của Tab Ghi chú -->
       <header class="profiles-header">
-        <span class="profiles-badge">Hồ sơ</span>
-        <h2 class="profiles-title">Ghi chú về hai người</h2>
-        <p class="profiles-subtitle">Chạm vào hồ sơ để xem chi tiết hoặc chỉnh sửa</p>
+        <span class="profiles-badge" id="notes-header-badge">Góc Riêng</span>
+        <h2 class="profiles-title" id="notes-header-title">Ghi chú & Lời nhắn</h2>
+        <p class="profiles-subtitle" id="notes-header-subtitle">Không gian kết nối yêu thương của hai đứa mình</p>
+      </header>
+
+        <!-- Thanh danh tính người dùng hiện tại trên thiết bị -->
+        <div class="notes-identity-pill" id="notes-identity-bar">
+          <span class="notes-identity-text">Bạn là: <strong id="notes-current-user-name">Đang tải...</strong></span>
+          <button type="button" id="notes-switch-user-btn" class="notes-switch-user-btn" title="Đổi tài khoản trên máy này">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="8.5" cy="7" r="4"></circle>
+              <polyline points="17 11 19 13 23 9"></polyline>
+            </svg>
+            <span>Đổi</span>
+          </button>
+        </div>
       </header>
 
       <!-- 2 Thẻ Profile Lớn -->
@@ -187,7 +201,10 @@
             <div id="profile-card-avatar-fallback-person1" class="profile-card-avatar-fallback">?</div>
           </div>
           <div class="profile-card-content">
-            <h3 class="profile-card-name" id="profile-card-name-person1">Người thương 1</h3>
+            <div class="profile-card-name-row">
+              <h3 class="profile-card-name" id="profile-card-name-person1">Người thương 1</h3>
+              <span id="profile-unread-badge-person1" class="profile-card-unread-badge hidden">0</span>
+            </div>
             <span class="profile-card-meta" id="profile-card-meta-person1">Chạm để xem chi tiết</span>
           </div>
           <div class="profile-card-arrow">
@@ -211,7 +228,10 @@
             <div id="profile-card-avatar-fallback-person2" class="profile-card-avatar-fallback">?</div>
           </div>
           <div class="profile-card-content">
-            <h3 class="profile-card-name" id="profile-card-name-person2">Người thương 2</h3>
+            <div class="profile-card-name-row">
+              <h3 class="profile-card-name" id="profile-card-name-person2">Người thương 2</h3>
+              <span id="profile-unread-badge-person2" class="profile-card-unread-badge hidden">0</span>
+            </div>
             <span class="profile-card-meta" id="profile-card-meta-person2">Chạm để xem chi tiết</span>
           </div>
           <div class="profile-card-arrow">
@@ -265,6 +285,7 @@
             <line x1="16" y1="17" x2="8" y2="17"></line>
             <polyline points="10 9 9 9 8 9"></polyline>
           </svg>
+          <span id="notes-unread-badge" class="nav-unread-dot hidden"></span>
         </div>
         <span class="nav-label">Ghi chú</span>
       </button>
@@ -533,6 +554,62 @@
             <div class="profile-note-val" id="profile-view-note">Chưa cập nhật</div>
           </div>
         </div>
+
+        <!-- Khối Hộp thư góp ý & tâm sự trong hồ sơ -->
+        <div id="profile-feedback-section" class="profile-feedback-section">
+          <!-- Phần cho hồ sơ CỦA CHÍNH MÌNH (Xem thư nhận được) -->
+          <div id="profile-feedback-inbox-wrap" class="profile-feedback-inbox-wrap hidden">
+            <div class="profile-feedback-header">
+              <div class="profile-feedback-title-row">
+                <span class="profile-feedback-title-icon">💌</span>
+                <h4 class="profile-feedback-title">Hộp thư của bạn</h4>
+              </div>
+              <span id="profile-feedback-inbox-count" class="profile-feedback-badge-count hidden">0 thư mới</span>
+            </div>
+            <p class="profile-feedback-subtitle">Những lời nhắn đối phương gửi riêng cho bạn (thư sẽ tự biến mất sau khi bạn đọc xong ✨):</p>
+            <div id="profile-feedback-letters-list" class="profile-feedback-letters-list">
+              <!-- Render động danh sách thư -->
+            </div>
+            <div id="profile-feedback-inbox-empty" class="profile-feedback-empty hidden">
+              <span class="profile-feedback-empty-icon">🌿</span>
+              <p class="profile-feedback-empty-text">Chưa có tâm sự nào gửi tới đây.</p>
+            </div>
+          </div>
+
+          <!-- Phần cho hồ sơ CỦA ĐỐI PHƯƠNG (Soạn thư gửi tới người này) -->
+          <div id="profile-feedback-compose-wrap" class="profile-feedback-compose-wrap hidden">
+            <div class="profile-feedback-header">
+              <div class="profile-feedback-title-row">
+                <span class="profile-feedback-title-icon">💌</span>
+                <h4 id="profile-feedback-compose-title" class="profile-feedback-title">Gửi lời nhắn / Góp ý</h4>
+              </div>
+            </div>
+            <p class="profile-feedback-subtitle">Hãy viết những điều bạn mong muốn người ấy thấu hiểu, chân thành và yêu thương:</p>
+            
+            <div class="feedback-compose-body">
+              <textarea id="feedback-compose-input" rows="3" placeholder="Viết những lời nhắn gửi chân thành tại đây..." maxlength="2000"></textarea>
+
+              <!-- Khối nhắc nhở AI dịu dàng -->
+              <div class="feedback-ai-reminder">
+                <div class="feedback-ai-reminder-icon">💛</div>
+                <div class="feedback-ai-reminder-content">
+                  <p class="feedback-ai-reminder-text">Trước khi gửi, hãy thử dán nội dung này vào Gemini hoặc ChatGPT hỏi xem có cách nói nào nhẹ nhàng hơn không nhé 💛</p>
+                  <button type="button" id="feedback-copy-btn" class="feedback-copy-btn" title="Sao chép nội dung">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span id="feedback-copy-btn-text">Sao chép</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="profile-feedback-actions">
+              <button type="button" id="feedback-compose-send-btn" class="pin-btn pin-btn-confirm">Gửi góp ý 💌</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Action: Nút Chỉnh sửa (chỉ hiện khi Edit Mode đang bật) & Đóng -->
@@ -693,37 +770,23 @@
         <div class="guide-step">
           <div class="guide-step-icon">💌</div>
           <div class="guide-step-body">
-            <h4 class="guide-step-title">1. Mở từng phong thư kỷ niệm</h4>
-            <p class="guide-step-desc">Mỗi trạm dừng là một câu chuyện, một bức ảnh và những dòng tâm sự anh đã nắn nót viết riêng cho em. Em hãy đọc chậm rãi để cùng anh quay về những ngày tháng ấy nhé.</p>
-          </div>
-        </div>
-
-        <div class="guide-step">
-          <div class="guide-step-icon">🧩</div>
-          <div class="guide-step-body">
-            <h4 class="guide-step-title">2. Mở khoá điều bất ngờ</h4>
-            <p class="guide-step-desc">Ở cuối mỗi bức thư sẽ có một câu hỏi nhỏ về chuyện hai đứa mình. Trả lời đúng sẽ mở ra chiếc chìa khoá dẫn đến kỷ niệm tiếp theo. Đừng lo lắng nếu lỡ quên, luôn có gợi ý nhỏ xinh dành cho em đó!</p>
+            <h4 class="guide-step-title">Đọc và mở khoá từng kỷ niệm</h4>
+            <p class="guide-step-desc">Mỗi trạm dừng là một câu chuyện anh viết riêng cho em. Đọc xong, trả lời đúng câu hỏi nhỏ để mở khoá kỷ niệm tiếp theo nhé. Quên mất thì có gợi ý nhỏ xinh ở đó rồi.</p>
           </div>
         </div>
 
         <div class="guide-step">
           <div class="guide-step-icon">🕰️</div>
           <div class="guide-step-body">
-            <h4 class="guide-step-title">3. Ôn lại kỷ niệm cũ bất cứ lúc nào</h4>
-            <p class="guide-step-desc">Khi muốn đọc lại các kỷ niệm đã qua, em chỉ cần chạm vào các chấm nhỏ trên đầu màn hình, hoặc vuốt nhẹ xuống dưới. Bấm nút hoa hồng ở góc phải để quay lại kỷ niệm mới nhất nhé.</p>
+            <h4 class="guide-step-title">Muốn xem lại kỷ niệm đã qua?</h4>
+            <p class="guide-step-desc">Chạm vào các chấm nhỏ trên đầu màn hình, hoặc vuốt nhẹ xuống dưới là quay lại được liền.</p>
           </div>
         </div>
 
         <div class="guide-step">
           <div class="guide-step-icon">🌿</div>
           <div class="guide-step-body">
-            <h4 class="guide-step-title">4. Ba góc nhỏ của hai đứa</h4>
-            <p class="guide-step-desc">Dưới cùng màn hình là 3 lối đi riêng:</p>
-            <ul class="guide-sublist">
-              <li><strong>Ảnh chung:</strong> Nơi lưu giữ những khoảnh khắc đẹp nhất của chúng mình.</li>
-              <li><strong>Hành trình:</strong> Chuyến xe kỷ niệm em đang đi.</li>
-              <li><strong>Ghi chú:</strong> Những lời nhắn gửi và điều ước anh gửi đến em.</li>
-            </ul>
+            <p class="guide-step-desc">Còn lại, em cứ thoải mái khám phá trang web này nhé — biết đâu có vài điều bất ngờ anh giấu đâu đó đang chờ em tìm ra ✨</p>
           </div>
         </div>
       </div>
@@ -761,6 +824,64 @@
     </div>
   </div>
 
+  <!-- Modal Chọn Người Dùng Cho Tính Năng Góp Ý (Person Identification Modal) -->
+  <div id="feedback-user-modal" class="pin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="feedback-user-modal-title">
+    <div class="pin-modal-card feedback-user-modal-card">
+      <div class="edit-modal-header">
+        <h3 id="feedback-user-modal-title">💛 Bạn là ai trong hai người nè?</h3>
+      </div>
+      <p class="feedback-user-modal-subtitle">Hãy chọn tài khoản của bạn để gửi và nhận những lời nhắn riêng nhé:</p>
+      
+      <div class="feedback-user-select-grid">
+        <button type="button" class="feedback-user-card-btn" id="feedback-select-person1" data-person="person1">
+          <div class="feedback-user-card-avatar-wrapper">
+            <img id="feedback-user-avatar-person1" class="feedback-user-card-avatar hidden" src="" alt="Avatar" />
+            <div id="feedback-user-fallback-person1" class="feedback-user-card-avatar-fallback">1</div>
+          </div>
+          <span id="feedback-user-name-person1" class="feedback-user-card-name">Người thương 1</span>
+          <span class="feedback-user-card-tag">Là mình nè</span>
+        </button>
+
+        <button type="button" class="feedback-user-card-btn" id="feedback-select-person2" data-person="person2">
+          <div class="feedback-user-card-avatar-wrapper">
+            <img id="feedback-user-avatar-person2" class="feedback-user-card-avatar hidden" src="" alt="Avatar" />
+            <div id="feedback-user-fallback-person2" class="feedback-user-card-avatar-fallback">2</div>
+          </div>
+          <span id="feedback-user-name-person2" class="feedback-user-card-name">Người thương 2</span>
+          <span class="feedback-user-card-tag">Là mình nè</span>
+        </button>
+      </div>
+      <p class="feedback-user-modal-note">* Lựa chọn sẽ được lưu trên máy này. Bạn có thể đổi lại bất cứ lúc nào.</p>
+    </div>
+  </div>
+
+  <!-- Modal Xem Chi Tiết Góp Ý (Feedback Detail Modal) -->
+  <div id="feedback-detail-modal" class="pin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="feedback-detail-title">
+    <div class="pin-modal-card feedback-detail-modal-card">
+      <div class="edit-modal-header">
+        <h3 id="feedback-detail-title">💌 Lời nhắn yêu thương</h3>
+        <button type="button" id="feedback-detail-close-x" class="edit-modal-close-x" aria-label="Đóng">&times;</button>
+      </div>
+
+      <div class="feedback-detail-meta">
+        <div class="feedback-detail-sender" id="feedback-detail-sender">Từ: ...</div>
+        <div class="feedback-detail-time" id="feedback-detail-time">...</div>
+      </div>
+
+      <div class="feedback-detail-content" id="feedback-detail-content">
+        <!-- Nội dung thư -->
+      </div>
+
+      <div class="feedback-detail-status" id="feedback-detail-status">
+        <!-- Trạng thái đọc -->
+      </div>
+
+      <div class="edit-modal-actions">
+        <button type="button" id="feedback-detail-close-btn" class="pin-btn pin-btn-confirm">Đã đọc ✨</button>
+      </div>
+    </div>
+  </div>
+
   <!--
     THỨ TỰ SCRIPT (bắt buộc):
     1. firebase-config.js  — classic, expose window.FIREBASE_CONFIG
@@ -776,9 +897,9 @@
   <script src="./data.js"></script>
 
   <!-- Firebase bridge (ES Module) -->
-  <script type="module" src="./firebase-bridge.js?v=15"></script>
+  <script type="module" src="./firebase-bridge.js?v=19"></script>
 
   <!-- Logic game -->
-  <script src="./main.js?v=15"></script>
+  <script src="./main.js?v=19"></script>
 </body>
 </html>

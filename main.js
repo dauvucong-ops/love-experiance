@@ -88,6 +88,9 @@ class GameController {
 
     // Khởi tạo Hướng dẫn sử dụng (User Guide)
     this.initUserGuide();
+
+    // Khởi tạo Hộp thư góp ý & tâm sự (Feedbacks - Tab Notes)
+    this.initFeedbacks();
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -1309,6 +1312,9 @@ class GameController {
       const profiles = e.detail?.profiles || {};
       this.profilesData = profiles;
       this.renderProfiles();
+      if (typeof this.updateFeedbackUserDisplay === 'function') {
+        this.updateFeedbackUserDisplay();
+      }
 
       // Nếu đang mở modal xem chi tiết, cập nhật lại dữ liệu đang hiển thị
       if (this.currentViewingPersonId && this.profileViewModal && !this.profileViewModal.classList.contains('hidden')) {
@@ -1533,6 +1539,12 @@ class GameController {
     if (!this.profileViewModal) return;
     this.currentViewingPersonId = personId;
 
+    // Nếu thiết bị chưa chọn danh tính: mở modal hỏi trước
+    if (!this.currentFeedbackUser) {
+      this.openFeedbackUserModal();
+      return;
+    }
+
     const p = (this.profilesData && this.profilesData[personId]) || {};
     const defaultName = personId === 'person1' ? 'Người thương 1' : 'Người thương 2';
     const displayName = (p.name && p.name.trim()) ? p.name.trim() : defaultName;
@@ -1619,6 +1631,9 @@ class GameController {
         this.profileViewNote.classList.add('is-empty');
       }
     }
+
+    // Render khối Hộp thư góp ý / soạn thư trong modal hồ sơ
+    this.renderProfileFeedbackSection(personId);
 
     this.profileViewModal.classList.remove('hidden');
   }
@@ -3599,6 +3614,522 @@ class GameController {
     try {
       localStorage.setItem('lj_guide_seen', 'true');
     } catch (_) {}
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // HỘP THƯ GÓP Ý & TÂM SỰ (FEEDBACKS - PROFILE MODAL)
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * Khởi tạo các tham chiếu DOM và sự kiện cho Hộp thư góp ý
+   */
+  initFeedbacks() {
+    this.feedbacksData = [];
+    this.currentFeedbackUser = null;
+    this.currentViewingFeedback = null;
+    try {
+      this.currentFeedbackUser = localStorage.getItem('lj_feedback_user') || null;
+    } catch (_) {}
+
+    // Thanh danh tính ở Tab 3 header
+    this.notesCurrentUserName    = document.getElementById('notes-current-user-name');
+    this.notesSwitchUserBtn      = document.getElementById('notes-switch-user-btn');
+
+    // Badge số đếm chưa đọc trên 2 thẻ ngoài danh sách
+    this.profileUnreadBadgePerson1 = document.getElementById('profile-unread-badge-person1');
+    this.profileUnreadBadgePerson2 = document.getElementById('profile-unread-badge-person2');
+
+    // Badge chấm đỏ trên Tab 3 bottom nav
+    this.notesUnreadBadge        = document.getElementById('notes-unread-badge');
+
+    // Modal xem chi tiết hồ sơ: khối hộp thư
+    this.profileFeedbackSection      = document.getElementById('profile-feedback-section');
+    this.profileFeedbackInboxWrap    = document.getElementById('profile-feedback-inbox-wrap');
+    this.profileFeedbackInboxCount   = document.getElementById('profile-feedback-inbox-count');
+    this.profileFeedbackLettersList  = document.getElementById('profile-feedback-letters-list');
+    this.profileFeedbackInboxEmpty   = document.getElementById('profile-feedback-inbox-empty');
+    this.profileFeedbackComposeWrap  = document.getElementById('profile-feedback-compose-wrap');
+    this.profileFeedbackComposeTitle = document.getElementById('profile-feedback-compose-title');
+    this.feedbackComposeInput        = document.getElementById('feedback-compose-input');
+    this.feedbackCopyBtn             = document.getElementById('feedback-copy-btn');
+    this.feedbackCopyBtnText         = document.getElementById('feedback-copy-btn-text');
+    this.feedbackComposeSendBtn      = document.getElementById('feedback-compose-send-btn');
+
+    // Modal chọn người dùng
+    this.feedbackUserModal       = document.getElementById('feedback-user-modal');
+    this.feedbackSelectPerson1   = document.getElementById('feedback-select-person1');
+    this.feedbackSelectPerson2   = document.getElementById('feedback-select-person2');
+    this.feedbackUserNamePerson1 = document.getElementById('feedback-user-name-person1');
+    this.feedbackUserNamePerson2 = document.getElementById('feedback-user-name-person2');
+    this.feedbackUserAvatarPerson1 = document.getElementById('feedback-user-avatar-person1');
+    this.feedbackUserAvatarPerson2 = document.getElementById('feedback-user-avatar-person2');
+    this.feedbackUserFallbackPerson1 = document.getElementById('feedback-user-fallback-person1');
+    this.feedbackUserFallbackPerson2 = document.getElementById('feedback-user-fallback-person2');
+
+    // Modal xem chi tiết thư (tự huỷ sau khi xem)
+    this.feedbackDetailModal     = document.getElementById('feedback-detail-modal');
+    this.feedbackDetailCloseX    = document.getElementById('feedback-detail-close-x');
+    this.feedbackDetailCloseBtn  = document.getElementById('feedback-detail-close-btn');
+    this.feedbackDetailSender    = document.getElementById('feedback-detail-sender');
+    this.feedbackDetailTime      = document.getElementById('feedback-detail-time');
+    this.feedbackDetailContent   = document.getElementById('feedback-detail-content');
+    this.feedbackDetailStatus    = document.getElementById('feedback-detail-status');
+
+    // Sự kiện đổi người dùng
+    if (this.notesSwitchUserBtn) {
+      this.notesSwitchUserBtn.addEventListener('click', () => this.openFeedbackUserModal());
+    }
+
+    // Sự kiện chọn người trong modal
+    if (this.feedbackSelectPerson1) {
+      this.feedbackSelectPerson1.addEventListener('click', () => this.setFeedbackUser('person1'));
+    }
+    if (this.feedbackSelectPerson2) {
+      this.feedbackSelectPerson2.addEventListener('click', () => this.setFeedbackUser('person2'));
+    }
+
+    // Sự kiện sao chép nội dung
+    if (this.feedbackCopyBtn) {
+      this.feedbackCopyBtn.addEventListener('click', () => this.copyFeedbackContent());
+    }
+
+    // Sự kiện gửi góp ý
+    if (this.feedbackComposeSendBtn) {
+      this.feedbackComposeSendBtn.addEventListener('click', () => this.sendFeedback());
+    }
+
+    // Sự kiện đóng modal chi tiết
+    if (this.feedbackDetailCloseX) {
+      this.feedbackDetailCloseX.addEventListener('click', () => this.closeFeedbackDetailModal());
+    }
+    if (this.feedbackDetailCloseBtn) {
+      this.feedbackDetailCloseBtn.addEventListener('click', () => this.closeFeedbackDetailModal());
+    }
+    if (this.feedbackDetailModal) {
+      this.feedbackDetailModal.addEventListener('click', (e) => {
+        if (e.target === this.feedbackDetailModal) this.closeFeedbackDetailModal();
+      });
+    }
+
+    // Phím Escape đóng các modal liên quan
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (this.feedbackUserModal && !this.feedbackUserModal.classList.contains('hidden')) {
+          this.closeFeedbackUserModal();
+        }
+        if (this.feedbackDetailModal && !this.feedbackDetailModal.classList.contains('hidden')) {
+          this.closeFeedbackDetailModal();
+        }
+      }
+    });
+
+    // Lắng nghe sự kiện real-time lj:feedbacksUpdated
+    window.addEventListener('lj:feedbacksUpdated', (e) => {
+      this.feedbacksData = e.detail?.feedbacks || [];
+      this.renderFeedbacks();
+    });
+
+    this.updateFeedbackUserDisplay();
+    this.renderFeedbacks();
+  }
+
+  /**
+   * Lấy tên hiển thị của person1 / person2 từ profilesData
+   */
+  getPersonDisplayName(personId) {
+    const p = (this.profilesData && this.profilesData[personId]) || {};
+    if (p.name && p.name.trim()) return p.name.trim();
+    return personId === 'person1' ? 'Người thương 1' : 'Người thương 2';
+  }
+
+  /**
+   * Cập nhật thông tin danh tính người dùng hiện tại lên UI
+   */
+  updateFeedbackUserDisplay() {
+    if (this.notesCurrentUserName) {
+      if (this.currentFeedbackUser) {
+        this.notesCurrentUserName.textContent = this.getPersonDisplayName(this.currentFeedbackUser);
+      } else {
+        this.notesCurrentUserName.textContent = 'Chưa chọn';
+      }
+    }
+
+    // Cập nhật tên trong modal chọn người
+    if (this.feedbackUserNamePerson1) {
+      this.feedbackUserNamePerson1.textContent = this.getPersonDisplayName('person1');
+    }
+    if (this.feedbackUserNamePerson2) {
+      this.feedbackUserNamePerson2.textContent = this.getPersonDisplayName('person2');
+    }
+
+    // Cập nhật avatar trong modal chọn người
+    ['person1', 'person2'].forEach(id => {
+      const p = (this.profilesData && this.profilesData[id]) || {};
+      const avatarEl = id === 'person1' ? this.feedbackUserAvatarPerson1 : this.feedbackUserAvatarPerson2;
+      const fallbackEl = id === 'person1' ? this.feedbackUserFallbackPerson1 : this.feedbackUserFallbackPerson2;
+      if (avatarEl && fallbackEl) {
+        if (p.avatarUrl && p.avatarUrl.trim()) {
+          avatarEl.src = p.avatarUrl.trim();
+          avatarEl.classList.remove('hidden');
+          fallbackEl.classList.add('hidden');
+        } else {
+          avatarEl.src = '';
+          avatarEl.classList.add('hidden');
+          fallbackEl.classList.remove('hidden');
+        }
+      }
+    });
+  }
+
+  /**
+   * Mở modal chọn danh tính person1 / person2
+   */
+  openFeedbackUserModal() {
+    if (!this.feedbackUserModal) return;
+    this.updateFeedbackUserDisplay();
+    this.feedbackUserModal.classList.remove('hidden');
+  }
+
+  /**
+   * Đóng modal chọn danh tính
+   */
+  closeFeedbackUserModal() {
+    if (!this.feedbackUserModal) return;
+    this.feedbackUserModal.classList.add('hidden');
+  }
+
+  /**
+   * Thiết lập danh tính người dùng và lưu vào localStorage
+   */
+  setFeedbackUser(personId) {
+    if (personId !== 'person1' && personId !== 'person2') return;
+    this.currentFeedbackUser = personId;
+    try {
+      localStorage.setItem('lj_feedback_user', personId);
+    } catch (_) {}
+    this.closeFeedbackUserModal();
+    this.updateFeedbackUserDisplay();
+    this.renderFeedbacks();
+    if (this.currentViewingPersonId) {
+      this.openProfileViewModal(this.currentViewingPersonId);
+    }
+  }
+
+  /**
+   * Render khối Hộp thư góp ý bên trong modal xem chi tiết hồ sơ (#profile-view-modal)
+   * @param {'person1' | 'person2'} personId
+   */
+  renderProfileFeedbackSection(personId) {
+    if (!this.profileFeedbackSection) return;
+
+    // Nếu thiết bị chưa chọn danh tính: mở modal chọn danh tính trước
+    if (!this.currentFeedbackUser) {
+      this.openFeedbackUserModal();
+      return;
+    }
+
+    const isOwnProfile = personId === this.currentFeedbackUser;
+
+    if (isOwnProfile) {
+      // ── TRƯỜNG HỢP A: Hồ sơ CỦA CHÍNH MÌNH (Xem thư nhận được) ──
+      if (this.profileFeedbackComposeWrap) {
+        this.profileFeedbackComposeWrap.classList.add('hidden');
+      }
+      if (this.profileFeedbackInboxWrap) {
+        this.profileFeedbackInboxWrap.classList.remove('hidden');
+      }
+
+      // Danh sách thư gửi TỚI mình (thư chưa đọc)
+      const myLetters = (this.feedbacksData || [])
+        .filter(f => f.receiver === personId)
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+      // Cập nhật badge số lượng
+      if (this.profileFeedbackInboxCount) {
+        if (myLetters.length > 0) {
+          this.profileFeedbackInboxCount.textContent = `${myLetters.length} thư mới`;
+          this.profileFeedbackInboxCount.classList.remove('hidden');
+        } else {
+          this.profileFeedbackInboxCount.classList.add('hidden');
+        }
+      }
+
+      // Hiển thị danh sách hoặc thông báo trống
+      if (myLetters.length === 0) {
+        if (this.profileFeedbackLettersList) this.profileFeedbackLettersList.innerHTML = '';
+        if (this.profileFeedbackInboxEmpty) this.profileFeedbackInboxEmpty.classList.remove('hidden');
+      } else {
+        if (this.profileFeedbackInboxEmpty) this.profileFeedbackInboxEmpty.classList.add('hidden');
+        if (this.profileFeedbackLettersList) {
+          this.profileFeedbackLettersList.innerHTML = '';
+          myLetters.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'feedback-card is-unread';
+            card.tabIndex = 0;
+            card.setAttribute('role', 'button');
+            card.setAttribute('aria-label', `Lời nhắn lúc ${this._formatFeedbackDate(item.createdAt)}`);
+
+            const senderName = this.getPersonDisplayName(item.sender);
+            const timeFormatted = this._formatFeedbackDate(item.createdAt);
+
+            card.innerHTML = `
+              <div class="feedback-card-header">
+                <div class="feedback-card-meta-left">
+                  <span class="feedback-card-sender">Từ: ${senderName}</span>
+                  <span class="feedback-unread-badge">● Mới</span>
+                </div>
+                <span class="feedback-card-time">${timeFormatted}</span>
+              </div>
+              <div class="feedback-card-content">${this._escapeHtml(item.content || '')}</div>
+              <div class="feedback-card-footer">
+                <span class="feedback-card-hint">Chạm để đọc thư ✨</span>
+                <span class="feedback-card-arrow">Chi tiết →</span>
+              </div>
+            `;
+
+            card.addEventListener('click', () => this.openFeedbackDetail(item));
+            card.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.openFeedbackDetail(item);
+              }
+            });
+
+            this.profileFeedbackLettersList.appendChild(card);
+          });
+        }
+      }
+    } else {
+      // ── TRƯỜNG HỢP B: Hồ sơ CỦA ĐỐI PHƯƠNG (Soạn thư gửi tới người này) ──
+      if (this.profileFeedbackInboxWrap) {
+        this.profileFeedbackInboxWrap.classList.add('hidden');
+      }
+      if (this.profileFeedbackComposeWrap) {
+        this.profileFeedbackComposeWrap.classList.remove('hidden');
+      }
+
+      const targetName = this.getPersonDisplayName(personId);
+      if (this.profileFeedbackComposeTitle) {
+        this.profileFeedbackComposeTitle.textContent = `Gửi lời nhắn / Góp ý cho ${targetName}`;
+      }
+      if (this.feedbackComposeInput) {
+        this.feedbackComposeInput.placeholder = `Viết những lời nhắn gửi chân thành tới ${targetName}...`;
+      }
+    }
+  }
+
+  /**
+   * Sao chép nội dung trong ô textarea vào clipboard
+   */
+  copyFeedbackContent() {
+    const text = this.feedbackComposeInput ? this.feedbackComposeInput.value.trim() : '';
+    if (!text) {
+      alert('Bạn hãy nhập đôi dòng tâm sự trước khi sao chép nhé 💛');
+      return;
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        if (this.feedbackCopyBtnText) {
+          const originalText = this.feedbackCopyBtnText.textContent;
+          this.feedbackCopyBtnText.textContent = 'Đã sao chép ✓';
+          setTimeout(() => {
+            if (this.feedbackCopyBtnText) this.feedbackCopyBtnText.textContent = originalText;
+          }, 2000);
+        }
+      }).catch(() => {
+        alert('Không thể sao chép tự động. Bạn có thể chọn và sao chép thủ công nhé.');
+      });
+    } else {
+      alert('Trình duyệt không hỗ trợ sao chép tự động.');
+    }
+  }
+
+  /**
+   * Gửi góp ý / tâm sự lên Firestore
+   */
+  async sendFeedback() {
+    if (!this.currentFeedbackUser) {
+      this.openFeedbackUserModal();
+      return;
+    }
+
+    const content = this.feedbackComposeInput ? this.feedbackComposeInput.value.trim() : '';
+    if (!content) {
+      alert('Bạn hãy viết những lời nhắn nhủ trước khi gửi nhé 💛');
+      if (this.feedbackComposeInput) this.feedbackComposeInput.focus();
+      return;
+    }
+
+    const sender = this.currentFeedbackUser;
+    const receiver = this.currentViewingPersonId || (sender === 'person1' ? 'person2' : 'person1');
+
+    if (this.feedbackComposeSendBtn) {
+      this.feedbackComposeSendBtn.disabled = true;
+      this.feedbackComposeSendBtn.textContent = 'Đang gửi...';
+    }
+
+    const feedbackData = {
+      content: content,
+      sender: sender,
+      receiver: receiver,
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      if (typeof window.__LJ_SEND_FEEDBACK === 'function') {
+        await window.__LJ_SEND_FEEDBACK(feedbackData);
+      } else {
+        throw new Error('Chức năng gửi chưa sẵn sàng. Vui lòng kiểm tra kết nối mạng.');
+      }
+
+      if (this.feedbackComposeInput) {
+        this.feedbackComposeInput.value = '';
+      }
+      alert('Đã gửi lời nhắn yêu thương thành công 💌');
+    } catch (err) {
+      console.warn('[LoveJourney] Lỗi gửi góp ý:', err);
+      let errorMsg = 'Lỗi gửi lời nhắn: ';
+      if (err && err.code === 'permission-denied') {
+        errorMsg += 'Không có quyền ghi (Security Rules từ chối).';
+      } else {
+        errorMsg += (err.message || 'Vui lòng thử lại sau.');
+      }
+      alert(errorMsg);
+    } finally {
+      if (this.feedbackComposeSendBtn) {
+        this.feedbackComposeSendBtn.disabled = false;
+        this.feedbackComposeSendBtn.textContent = 'Gửi góp ý 💌';
+      }
+    }
+  }
+
+  /**
+   * Cập nhật badge số đếm và cập nhật lại giao diện hộp thư
+   */
+  renderFeedbacks() {
+    if (!Array.isArray(this.feedbacksData)) return;
+
+    // Số đếm thư chưa đọc gửi tới person1 và person2
+    const p1Count = this.feedbacksData.filter(f => f.receiver === 'person1').length;
+    const p2Count = this.feedbacksData.filter(f => f.receiver === 'person2').length;
+
+    // Badge trên thẻ person1 ngoài danh sách
+    if (this.profileUnreadBadgePerson1) {
+      this.profileUnreadBadgePerson1.textContent = p1Count;
+      this.profileUnreadBadgePerson1.classList.toggle('hidden', p1Count === 0);
+    }
+
+    // Badge trên thẻ person2 ngoài danh sách
+    if (this.profileUnreadBadgePerson2) {
+      this.profileUnreadBadgePerson2.textContent = p2Count;
+      this.profileUnreadBadgePerson2.classList.toggle('hidden', p2Count === 0);
+    }
+
+    // Badge trên bottom nav (chấm đỏ Tab 3) - chỉ hiện khi CHÍNH MÌNH có thư chưa đọc
+    if (this.notesUnreadBadge) {
+      const myCount = this.currentFeedbackUser
+        ? this.feedbacksData.filter(f => f.receiver === this.currentFeedbackUser).length
+        : 0;
+      this.notesUnreadBadge.classList.toggle('hidden', myCount === 0);
+    }
+
+    // Nếu modal hồ sơ đang mở: cập nhật lại nội dung hộp thư bên trong modal
+    if (this.profileViewModal && !this.profileViewModal.classList.contains('hidden') && this.currentViewingPersonId) {
+      this.renderProfileFeedbackSection(this.currentViewingPersonId);
+    }
+  }
+
+  /**
+   * Mở modal xem chi tiết góp ý
+   */
+  openFeedbackDetail(item) {
+    if (!item || !this.feedbackDetailModal) return;
+
+    this.currentViewingFeedback = item;
+
+    const isInbox = item.receiver === this.currentFeedbackUser;
+    const targetPersonId = isInbox ? item.sender : item.receiver;
+    const personPrefix = isInbox ? 'Từ: ' : 'Gửi tới: ';
+    const targetName = this.getPersonDisplayName(targetPersonId);
+    const timeFormatted = this._formatFeedbackDate(item.createdAt);
+
+    if (this.feedbackDetailSender) {
+      this.feedbackDetailSender.textContent = `${personPrefix}${targetName}`;
+    }
+    if (this.feedbackDetailTime) {
+      this.feedbackDetailTime.textContent = timeFormatted;
+    }
+    if (this.feedbackDetailContent) {
+      this.feedbackDetailContent.textContent = item.content || '';
+    }
+    if (this.feedbackDetailStatus) {
+      if (isInbox) {
+        this.feedbackDetailStatus.textContent = 'Thư sẽ tự động biến mất vĩnh viễn sau khi bạn đóng nhé ✨';
+      } else {
+        this.feedbackDetailStatus.textContent = 'Đang chờ đối phương đọc (thư sẽ tự biến mất khi người ấy đọc xong) ⏳';
+      }
+    }
+    if (this.feedbackDetailCloseBtn) {
+      this.feedbackDetailCloseBtn.textContent = isInbox ? 'Đã đọc & đóng thư ✨' : 'Đóng';
+    }
+
+    this.feedbackDetailModal.classList.remove('hidden');
+  }
+
+  /**
+   * Đóng modal xem chi tiết góp ý và tự động xoá nếu người nhận vừa xem xong
+   */
+  closeFeedbackDetailModal() {
+    if (!this.feedbackDetailModal) return;
+    this.feedbackDetailModal.classList.add('hidden');
+
+    if (this.currentViewingFeedback) {
+      const item = this.currentViewingFeedback;
+      this.currentViewingFeedback = null;
+
+      // Chỉ xoá khỏi Firestore khi đúng NGƯỜI NHẬN đóng modal xem thư
+      if (item.receiver === this.currentFeedbackUser && item.id) {
+        // Xoá lạc quan khỏi danh sách hiển thị local ngay lập tức
+        this.feedbacksData = this.feedbacksData.filter(f => f.id !== item.id);
+        this.renderFeedbacks();
+
+        if (typeof window.__LJ_DELETE_FEEDBACK === 'function') {
+          window.__LJ_DELETE_FEEDBACK(item.id).catch(err => {
+            console.warn('[LoveJourney] Lỗi xoá góp ý sau khi đọc:', err);
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * Helper định dạng ngày giờ
+   */
+  _formatFeedbackDate(isoString) {
+    if (!isoString) return '';
+    try {
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return '';
+      const hours = String(d.getHours()).padStart(2, '0');
+      const mins  = String(d.getMinutes()).padStart(2, '0');
+      const day   = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year  = d.getFullYear();
+      return `${hours}:${mins} ${day}/${month}/${year}`;
+    } catch (_) {
+      return '';
+    }
+  }
+
+  /**
+   * Helper escape HTML
+   */
+  _escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 }
 

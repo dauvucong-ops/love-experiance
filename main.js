@@ -29,7 +29,11 @@ class GameController {
     this.activeTab = 'journey';
 
     // Mốc kỷ niệm mở khoá cao nhất (Review Mode - Phase Xem lại kỷ niệm)
-    const storedMax = sessionStorage.getItem('lj_max_unlocked_index');
+    // Khôi phục từ localStorage (bảo toàn vĩnh viễn trên trình duyệt thiết bị)
+    let storedMax = null;
+    try {
+      storedMax = localStorage.getItem('lj_max_unlocked_index') ?? sessionStorage.getItem('lj_max_unlocked_index');
+    } catch (_) {}
     this.maxUnlockedIndex = storedMax !== null ? (parseInt(storedMax, 10) || 0) : 0;
 
     // ─── Tham chiếu DOM cố định ───────────────────────────────
@@ -78,6 +82,9 @@ class GameController {
 
     // Khởi tạo Review Mode & Modal xem lại câu đố
     this.initReviewQuizModal();
+
+    // Khởi tạo Modal sắp xếp thứ tự kỷ niệm (Reorder)
+    this.initReorderModal();
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -568,9 +575,11 @@ class GameController {
     const nextIndex = this.currentSceneIndex + 1;
     const hasNext = nextIndex < this.scenesData.length;
 
-    // Cập nhật mốc mở khoá cao nhất & lưu sessionStorage
+    // Cập nhật mốc mở khoá cao nhất & lưu localStorage (bảo toàn lâu dài)
     this.maxUnlockedIndex = Math.max(this.maxUnlockedIndex, nextIndex);
-    sessionStorage.setItem('lj_max_unlocked_index', String(this.maxUnlockedIndex));
+    try {
+      localStorage.setItem('lj_max_unlocked_index', String(this.maxUnlockedIndex));
+    } catch (_) {}
     this._renderMiniProgress();
 
     // ── Hiện media của scene vừa mở khoá ─────────────────────
@@ -635,7 +644,9 @@ class GameController {
       let newMax = deletedIndex < oldMax ? oldMax - 1 : oldMax;
       newMax = Math.max(0, Math.min(newMax, newScenesData.length - 1));
       this.maxUnlockedIndex = newMax;
-      sessionStorage.setItem('lj_max_unlocked_index', String(this.maxUnlockedIndex));
+      try {
+        localStorage.setItem('lj_max_unlocked_index', String(this.maxUnlockedIndex));
+      } catch (_) {}
 
       const targetIndex = Math.min(this.currentSceneIndex, newScenesData.length - 1);
       this.loadScene(targetIndex);
@@ -1952,6 +1963,7 @@ class GameController {
       document.body.classList.add('edit-mode-active');
       this.renderEditSceneButton();
       this.renderAddSceneButton();
+      this.renderReorderSceneButton();
       if (this.galleryAddBtn) {
         this.galleryAddBtn.classList.remove('hidden');
       }
@@ -1968,8 +1980,10 @@ class GameController {
       document.body.classList.remove('edit-mode-active');
       this.removeEditSceneButton();
       this.removeAddSceneButton();
+      this.removeReorderSceneButton();
       this.closeEditSceneModal();
       this.closeAddSceneModal();
+      this.closeReorderModal();
       if (this.galleryAddBtn) {
         this.galleryAddBtn.classList.add('hidden');
       }
@@ -3069,6 +3083,347 @@ class GameController {
         this.addSceneSaveBtn.disabled = false;
         this.addSceneSaveBtn.textContent = 'Tạo';
       }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // QUẢN LÝ MODAL SẮP XẾP THỨ TỰ KỶ NIỆM (REORDER SCENES)
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * Render nút "Thứ tự" vào DOM khi edit mode bật
+   */
+  renderReorderSceneButton() {
+    if (document.getElementById('reorder-scenes-btn')) return;
+
+    const container = document.getElementById('edit-controls-container') || document.querySelector('.scene-container');
+    if (!container) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'reorder-scenes-btn';
+    btn.className = 'reorder-scene-btn';
+    btn.type = 'button';
+    btn.title = 'Sắp xếp lại thứ tự kỷ niệm';
+    btn.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="7 15 12 20 17 15"></polyline>
+        <polyline points="7 9 12 4 17 9"></polyline>
+      </svg>
+      <span>Thứ tự</span>
+    `;
+
+    btn.addEventListener('click', () => this.openReorderModal());
+    container.appendChild(btn);
+  }
+
+  /**
+   * Xoá nút "Thứ tự" khỏi DOM khi edit mode tắt
+   */
+  removeReorderSceneButton() {
+    const btn = document.getElementById('reorder-scenes-btn');
+    if (btn) btn.remove();
+  }
+
+  /**
+   * Khởi tạo tham chiếu và sự kiện cho modal sắp xếp thứ tự
+   */
+  initReorderModal() {
+    this.reorderModal     = document.getElementById('reorder-scenes-modal');
+    this.reorderList      = document.getElementById('reorder-scenes-list');
+    this.reorderCloseX    = document.getElementById('reorder-close-x');
+    this.reorderCancelBtn = document.getElementById('reorder-cancel-btn');
+    this.reorderSaveBtn   = document.getElementById('reorder-save-btn');
+    this.reorderErrorMsg  = document.getElementById('reorder-error-msg');
+
+    if (this.reorderCloseX) {
+      this.reorderCloseX.addEventListener('click', () => this.closeReorderModal());
+    }
+
+    if (this.reorderCancelBtn) {
+      this.reorderCancelBtn.addEventListener('click', () => this.closeReorderModal());
+    }
+
+    if (this.reorderModal) {
+      this.reorderModal.addEventListener('click', (e) => {
+        if (e.target === this.reorderModal) this.closeReorderModal();
+      });
+    }
+
+    if (this.reorderSaveBtn) {
+      this.reorderSaveBtn.addEventListener('click', () => this.saveReorderedScenes());
+    }
+  }
+
+  /**
+   * Mở modal sắp xếp thứ tự kỷ niệm
+   */
+  openReorderModal() {
+    if (!this.reorderModal) return;
+    this.hideReorderError();
+
+    // Tách riêng: các kỷ niệm thường (có thể đổi chỗ) và Hồi kết (cố định ở cuối)
+    this.reorderingNormalScenes = this.scenesData
+      .filter(s => !s.isEpilogue && s.question !== null)
+      .map(s => ({ ...s }));
+
+    this.reorderingEpilogue = this.scenesData.find(s => s.isEpilogue || s.question === null) || null;
+
+    this._renderReorderList();
+    this.reorderModal.classList.remove('hidden');
+  }
+
+  /**
+   * Đóng modal sắp xếp thứ tự
+   */
+  closeReorderModal() {
+    if (this.reorderModal) {
+      this.reorderModal.classList.add('hidden');
+    }
+    this.hideReorderError();
+  }
+
+  showReorderError(msg) {
+    if (this.reorderErrorMsg) {
+      this.reorderErrorMsg.textContent = msg;
+      this.reorderErrorMsg.classList.remove('hidden');
+    }
+  }
+
+  hideReorderError() {
+    if (this.reorderErrorMsg) {
+      this.reorderErrorMsg.textContent = '';
+      this.reorderErrorMsg.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Render danh sách kỷ niệm trong modal sắp xếp kèm Pointer Events & nút bấm
+   */
+  _renderReorderList() {
+    if (!this.reorderList) return;
+    this.reorderList.innerHTML = '';
+
+    const normalCount = this.reorderingNormalScenes.length;
+
+    // 1. Render các kỷ niệm thường (có thể đổi chỗ)
+    this.reorderingNormalScenes.forEach((scene, idx) => {
+      const item = document.createElement('div');
+      item.className = 'reorder-item';
+      item.setAttribute('data-index', String(idx));
+
+      const title = stripSceneOrdinalPrefix(scene.sceneName) || `Kỷ niệm ${idx + 1}`;
+
+      item.innerHTML = `
+        <div class="reorder-handle" title="Kéo thả để đổi vị trí">⠿</div>
+        <div class="reorder-badge">${idx + 1}</div>
+        <div class="reorder-title" title="${title}">${title}</div>
+        <div class="reorder-actions">
+          <button type="button" class="reorder-arrow-btn" data-action="up" data-index="${idx}" ${idx === 0 ? 'disabled' : ''} title="Di chuyển lên">▲</button>
+          <button type="button" class="reorder-arrow-btn" data-action="down" data-index="${idx}" ${idx === normalCount - 1 ? 'disabled' : ''} title="Di chuyển xuống">▼</button>
+        </div>
+      `;
+
+      // Gán sự kiện click nút mũi tên
+      item.querySelectorAll('.reorder-arrow-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const action = btn.getAttribute('data-action');
+          const curIdx = parseInt(btn.getAttribute('data-index'), 10);
+          if (action === 'up' && curIdx > 0) {
+            const temp = this.reorderingNormalScenes[curIdx];
+            this.reorderingNormalScenes[curIdx] = this.reorderingNormalScenes[curIdx - 1];
+            this.reorderingNormalScenes[curIdx - 1] = temp;
+            this._renderReorderList();
+          } else if (action === 'down' && curIdx < normalCount - 1) {
+            const temp = this.reorderingNormalScenes[curIdx];
+            this.reorderingNormalScenes[curIdx] = this.reorderingNormalScenes[curIdx + 1];
+            this.reorderingNormalScenes[curIdx + 1] = temp;
+            this._renderReorderList();
+          }
+        });
+      });
+
+      // Gán Pointer Events kéo thả thuần (hỗ trợ cả Touch Mobile & Chuột Desktop)
+      const handle = item.querySelector('.reorder-handle');
+      if (handle) {
+        handle.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          const dragIdx = idx;
+          let dropTargetIdx = dragIdx;
+          const startY = e.clientY;
+
+          handle.setPointerCapture(e.pointerId);
+          item.classList.add('is-dragging');
+
+          const clearDropIndicators = () => {
+            this.reorderList.querySelectorAll('.reorder-item').forEach(el => {
+              el.classList.remove('drag-target-above', 'drag-target-below');
+            });
+          };
+
+          const onPointerMove = (moveEvt) => {
+            // 1. Thẻ bay theo ngón tay dọc trục Y
+            const deltaY = moveEvt.clientY - startY;
+            item.style.transform = `translateY(${deltaY}px)`;
+
+            // Tự động cuộn nhẹ danh sách nếu kéo sát mép trên/dưới
+            const listRect = this.reorderList.getBoundingClientRect();
+            if (moveEvt.clientY < listRect.top + 30) {
+              this.reorderList.scrollTop -= 5;
+            } else if (moveEvt.clientY > listRect.bottom - 30) {
+              this.reorderList.scrollTop += 5;
+            }
+
+            // 2. Tìm thẻ bên dưới con trỏ (do thẻ đang kéo có pointer-events: none nên tự xuyên qua)
+            const els = document.elementsFromPoint(moveEvt.clientX, moveEvt.clientY);
+            const targetEl = els.find(el => el.classList && el.classList.contains('reorder-item') && !el.classList.contains('is-epilogue'));
+
+            clearDropIndicators();
+
+            if (targetEl && targetEl !== item) {
+              const targetIdx = parseInt(targetEl.getAttribute('data-index'), 10);
+              if (!isNaN(targetIdx) && targetIdx >= 0 && targetIdx < normalCount) {
+                const rect = targetEl.getBoundingClientRect();
+                const isAbove = moveEvt.clientY < (rect.top + rect.height / 2);
+
+                if (isAbove) {
+                  targetEl.classList.add('drag-target-above');
+                  dropTargetIdx = targetIdx > dragIdx ? targetIdx - 1 : targetIdx;
+                } else {
+                  targetEl.classList.add('drag-target-below');
+                  dropTargetIdx = targetIdx < dragIdx ? targetIdx + 1 : targetIdx;
+                }
+              }
+            } else if (targetEl === item) {
+              // Rê về đúng vị trí ban đầu
+              dropTargetIdx = dragIdx;
+            } else {
+              // Nếu đang rê trên phần tử Hồi kết (cuối danh sách)
+              const epilogueEl = els.find(el => el.classList && el.classList.contains('is-epilogue'));
+              if (epilogueEl) {
+                epilogueEl.classList.add('drag-target-above');
+                dropTargetIdx = normalCount - 1;
+              }
+            }
+          };
+
+          const onPointerUp = (upEvt) => {
+            handle.removeEventListener('pointermove', onPointerMove);
+            handle.removeEventListener('pointerup', onPointerUp);
+            handle.removeEventListener('pointercancel', onPointerUp);
+            try {
+              handle.releasePointerCapture(upEvt.pointerId);
+            } catch (_) {}
+
+            item.classList.remove('is-dragging');
+            item.style.transform = '';
+            clearDropIndicators();
+
+            if (dropTargetIdx !== dragIdx && dropTargetIdx >= 0 && dropTargetIdx < normalCount) {
+              const [moved] = this.reorderingNormalScenes.splice(dragIdx, 1);
+              this.reorderingNormalScenes.splice(dropTargetIdx, 0, moved);
+              this._renderReorderList();
+            }
+          };
+
+          handle.addEventListener('pointermove', onPointerMove);
+          handle.addEventListener('pointerup', onPointerUp);
+          handle.addEventListener('pointercancel', onPointerUp);
+        });
+      }
+
+      this.reorderList.appendChild(item);
+    });
+
+    // 2. Render Hồi kết ở cuối cùng (Cố định, không thể đổi chỗ)
+    if (this.reorderingEpilogue) {
+      const epilogueItem = document.createElement('div');
+      epilogueItem.className = 'reorder-item is-epilogue';
+      const epilogueTitle = stripSceneOrdinalPrefix(this.reorderingEpilogue.sceneName) || 'Lời nhắn gửi từ trái tim';
+      epilogueItem.innerHTML = `
+        <div class="reorder-lock-icon" title="Hồi kết luôn cố định ở vị trí cuối cùng">🔒</div>
+        <div class="reorder-badge">Hồi kết</div>
+        <div class="reorder-title" title="${epilogueTitle}">${epilogueTitle}</div>
+        <div class="reorder-actions">
+          <span class="reorder-lock-icon" style="font-size:0.72rem; color:var(--text-muted); font-style:italic;">Cố định</span>
+        </div>
+      `;
+      this.reorderList.appendChild(epilogueItem);
+    }
+  }
+
+  /**
+   * Lưu thứ tự mới lên Firestore bằng writeBatch (Hồi kết bị loại hoàn toàn)
+   * và bảo toàn tiến trình maxUnlockedIndex theo các kỷ niệm đã hoàn thành liên tiếp.
+   */
+  async saveReorderedScenes() {
+    this.hideReorderError();
+    if (this.reorderSaveBtn) {
+      this.reorderSaveBtn.disabled = true;
+      this.reorderSaveBtn.textContent = 'Đang lưu...';
+    }
+    if (this.reorderCancelBtn) this.reorderCancelBtn.disabled = true;
+
+    const pin = window.APP_CONFIG?.adminPin ? String(window.APP_CONFIG.adminPin).trim() : '';
+
+    try {
+      if (typeof window.__LJ_REORDER_MEMORIES !== 'function') {
+        throw new Error('Chức năng sắp xếp Firestore chưa sẵn sàng.');
+      }
+
+      // 1. Xác định tập hợp firestoreId của những kỷ niệm ĐÃ HOÀN THÀNH trong thứ tự CŨ
+      //    (các scene có index < this.maxUnlockedIndex, loại trừ Hồi kết)
+      const completedIds = new Set();
+      const currentMax = this.maxUnlockedIndex || 0;
+      for (let i = 0; i < currentMax && i < this.scenesData.length; i++) {
+        const s = this.scenesData[i];
+        if (s && !s.isEpilogue && s.question !== null) {
+          completedIds.add(s.firestoreId || String(s.id));
+        }
+      }
+
+      // 2. CHỈ gửi các kỷ niệm thường, TUYỆT ĐỐI KHÔNG gửi Hồi kết vào batch
+      const normalScenesToSave = this.reorderingNormalScenes.filter(s => !s.isEpilogue && s.question !== null);
+
+      await window.__LJ_REORDER_MEMORIES(normalScenesToSave, pin);
+      console.log(`[LoveJourney] Đã lưu thứ tự mới thành công cho ${normalScenesToSave.length} kỷ niệm.`);
+
+      // 3. Tính lại maxUnlockedIndex MỚI dựa trên danh sách mới và completedIds:
+      //    Đếm số kỷ niệm LIÊN TIẾP tính từ vị trí 0 nằm trong completedIds.
+      //    DỪNG NGAY khi gặp kỷ niệm đầu tiên KHÔNG có trong completedIds.
+      let newMaxUnlocked = 0;
+      for (let i = 0; i < normalScenesToSave.length; i++) {
+        const s = normalScenesToSave[i];
+        const key = s.firestoreId || String(s.id);
+        if (completedIds.has(key)) {
+          newMaxUnlocked++;
+        } else {
+          break; // Dừng ngay khi gặp kỷ niệm đầu tiên chưa hoàn thành
+        }
+      }
+
+      this.maxUnlockedIndex = newMaxUnlocked;
+      try {
+        localStorage.setItem('lj_max_unlocked_index', String(this.maxUnlockedIndex));
+      } catch (_) {}
+
+      this.closeReorderModal();
+      this.loadScene(0);
+    } catch (err) {
+      console.warn('[LoveJourney] Lỗi lưu thứ tự scenes:', err);
+      let errorText = 'Lỗi lưu thứ tự: ';
+      if (err && err.code === 'permission-denied') {
+        errorText += 'Không có quyền ghi (mã PIN không khớp Security Rules).';
+      } else {
+        errorText += (err.message || 'Vui lòng thử lại sau.');
+      }
+      this.showReorderError(errorText);
+    } finally {
+      if (this.reorderSaveBtn) {
+        this.reorderSaveBtn.disabled = false;
+        this.reorderSaveBtn.textContent = 'Lưu thứ tự';
+      }
+      if (this.reorderCancelBtn) this.reorderCancelBtn.disabled = false;
     }
   }
 }

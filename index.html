@@ -15,7 +15,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="./style.css?v=10">
+  <link rel="stylesheet" href="./style.css?v=12">
 </head>
 <body>
   <!-- Tab 1: Kỷ niệm / Hành trình (Chứa toàn bộ #scene-container hiện có) -->
@@ -605,6 +605,25 @@
     </div>
   </div>
 
+  <!-- Modal Sắp Xếp Thứ Tự Kỷ Niệm (Reorder Modal) -->
+  <div id="reorder-scenes-modal" class="pin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="reorder-scenes-title">
+    <div class="pin-modal-card reorder-modal-card">
+      <div class="edit-modal-header">
+        <h3 id="reorder-scenes-title">Sắp xếp thứ tự kỷ niệm</h3>
+        <button type="button" id="reorder-close-x" class="edit-modal-close-x" aria-label="Đóng">&times;</button>
+      </div>
+      <p class="reorder-modal-subtitle">Kéo biểu tượng ⠿ hoặc bấm ▲ ▼ để đổi vị trí. Hồi kết luôn cố định ở cuối.</p>
+      <div id="reorder-error-msg" class="pin-error-msg hidden"></div>
+      <div id="reorder-scenes-list" class="reorder-scenes-list">
+        <!-- Render động danh sách kỷ niệm -->
+      </div>
+      <div class="edit-modal-actions">
+        <button type="button" id="reorder-cancel-btn" class="pin-btn pin-btn-cancel">Huỷ</button>
+        <button type="button" id="reorder-save-btn" class="pin-btn pin-btn-confirm">Lưu thứ tự</button>
+      </div>
+    </div>
+  </div>
+
   <!--
     THỨ TỰ SCRIPT (bắt buộc):
     1. firebase-config.js  — classic, expose window.FIREBASE_CONFIG
@@ -620,9 +639,9 @@
   <script src="./data.js"></script>
 
   <!-- Firebase bridge (ES Module) -->
-  <script type="module" src="./firebase-bridge.js?v=10"></script>
+  <script type="module" src="./firebase-bridge.js?v=12"></script>
 
   <!-- Logic game -->
-  <script src="./main.js?v=10"></script>
+  <script src="./main.js?v=12"></script>
 </body>
 </html>

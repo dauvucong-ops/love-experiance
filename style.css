@@ -1809,6 +1809,36 @@ body.edit-mode-active .profile-view-edit-btn {
   transform: scale(0.96);
 }
 
+/* Nút Sắp Xếp Thứ Tự (chỉ hiển thị khi isEditMode === true) */
+.reorder-scene-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  background: linear-gradient(135deg, #7a6e78, #5a4e58);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(90, 78, 88, 0.25);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  animation: fadeIn 0.25s ease-out;
+}
+
+.reorder-scene-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(90, 78, 88, 0.35);
+  background: linear-gradient(135deg, #8a7e88, #6a5e68);
+}
+
+.reorder-scene-btn:active {
+  transform: scale(0.96);
+}
+
 /* Modal Overlay Nhập PIN */
 .pin-modal-overlay {
   position: fixed;
@@ -2428,7 +2458,8 @@ body.edit-mode-active .profile-view-edit-btn {
   }
 
   .edit-scene-btn,
-  .add-scene-btn {
+  .add-scene-btn,
+  .reorder-scene-btn {
     padding: 4px 8px;
     font-size: 0.72rem;
     gap: 3px;
@@ -2614,4 +2645,188 @@ body.edit-mode-active .profile-view-edit-btn {
   cursor: pointer;
   pointer-events: all;
 }
+
+/* ==========================================================================
+   12. MODAL SẮP XẾP THỨ TỰ KỶ NIỆM (REORDER SCENES MODAL)
+   ========================================================================== */
+.reorder-modal-card {
+  max-width: 440px;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.reorder-modal-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.reorder-scenes-list {
+  overflow-y: auto;
+  max-height: 52vh;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px 8px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.reorder-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  position: relative;
+}
+
+.reorder-item.is-dragging {
+  opacity: 0.95;
+  background: #ffffff;
+  border: 1.5px solid var(--primary-color);
+  box-shadow: 0 14px 36px rgba(184, 74, 91, 0.38);
+  z-index: 999;
+  transition: none !important;
+  pointer-events: none;
+}
+
+/* Vạch chỉ thị vị trí thả (Drop Indicator Line) */
+.reorder-item.drag-target-above::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 4px;
+  right: 4px;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent-rose), var(--primary-color), var(--accent-rose));
+  border-radius: 4px;
+  box-shadow: 0 0 12px rgba(184, 74, 91, 0.85);
+  pointer-events: none;
+  z-index: 100;
+}
+
+.reorder-item.drag-target-below::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 4px;
+  right: 4px;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent-rose), var(--primary-color), var(--accent-rose));
+  border-radius: 4px;
+  box-shadow: 0 0 12px rgba(184, 74, 91, 0.85);
+  pointer-events: none;
+  z-index: 100;
+}
+
+.reorder-item.is-epilogue {
+  background: #fff9f6;
+  border-style: dashed;
+  border-color: rgba(229, 140, 153, 0.5);
+  opacity: 0.88;
+}
+
+.reorder-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.reorder-handle:active {
+  cursor: grabbing;
+}
+
+.reorder-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(184, 74, 91, 0.1);
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 0.74rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.reorder-item.is-epilogue .reorder-badge {
+  background: rgba(212, 163, 115, 0.15);
+  color: var(--accent-gold);
+  width: auto;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  font-size: 0.68rem;
+}
+
+.reorder-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reorder-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.reorder-arrow-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #ffffff;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-main);
+  font-size: 0.65rem;
+  transition: var(--transition-smooth);
+  padding: 0;
+}
+
+.reorder-arrow-btn:hover:not(:disabled) {
+  background: var(--primary-light);
+  color: var(--primary-color);
+  border-color: var(--accent-rose);
+}
+
+.reorder-arrow-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.reorder-arrow-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.reorder-lock-icon {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
 

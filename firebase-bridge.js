@@ -17,7 +17,7 @@
 
 import { initializeApp }
   from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js';
-import { getFirestore, collection, query, orderBy, onSnapshot, doc, setDoc, addDoc, deleteDoc }
+import { getFirestore, collection, query, orderBy, onSnapshot, doc, setDoc, addDoc, deleteDoc, writeBatch }
   from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js';
 
 // ── Khởi tạo Firebase ───────────────────────────────────────────────────────
@@ -55,6 +55,23 @@ window.__LJ_DELETE_GALLERY_ITEM = async function(firestoreId) {
 window.__LJ_DELETE_MEMORY = async function(firestoreId, pin) {
   const docRef = doc(db, 'memories', firestoreId);
   return await deleteDoc(docRef);
+};
+
+// Expose helper sắp xếp lại thứ tự kỷ niệm bằng writeBatch (Hồi kết bị loại hoàn toàn)
+window.__LJ_REORDER_MEMORIES = async function(orderedScenes, pin) {
+  if (!Array.isArray(orderedScenes) || orderedScenes.length === 0) return;
+  const batch = writeBatch(db);
+  orderedScenes.forEach((scene, index) => {
+    // Loại hoàn toàn Hồi kết khỏi batch, không bao giờ ghi đè order của Hồi kết
+    if (scene.isEpilogue || scene.question === null) return;
+    const firestoreId = scene.firestoreId || (`scene_${String(scene.id).padStart(2, '0')}`);
+    const docRef = doc(db, 'memories', firestoreId);
+    batch.set(docRef, {
+      order: index + 1,
+      pin: pin ? String(pin).trim() : ''
+    }, { merge: true });
+  });
+  return await batch.commit();
 };
 
 // Expose helper cập nhật hồ sơ trong collection "profiles" (Phase 3)

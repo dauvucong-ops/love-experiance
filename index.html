@@ -15,7 +15,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="./style.css?v=12">
+  <link rel="stylesheet" href="./style.css?v=15">
 </head>
 <body>
   <!-- Tab 1: Kỷ niệm / Hành trình (Chứa toàn bộ #scene-container hiện có) -->
@@ -29,8 +29,44 @@
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
           </svg>
-          <span id="edit-badge" class="edit-badge hidden">Đang chỉnh sửa</span>
+          <span id="edit-badge" class="edit-badge hidden">Đang sửa</span>
         </button>
+
+        <!-- Dropdown Menu Quản Trị (chỉ hiện khi Edit Mode bật) -->
+        <div id="edit-dropdown-wrapper" class="edit-dropdown-wrapper hidden">
+          <button id="edit-menu-btn" type="button" class="edit-menu-btn" aria-label="Tuỳ chọn quản trị" title="Tuỳ chọn quản trị" aria-expanded="false" aria-haspopup="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="5" r="1.8"></circle>
+              <circle cx="12" cy="12" r="1.8"></circle>
+              <circle cx="12" cy="19" r="1.8"></circle>
+            </svg>
+          </button>
+
+          <!-- Menu xổ xuống -->
+          <div id="edit-dropdown-menu" class="edit-dropdown-menu hidden" role="menu" aria-label="Menu quản trị">
+            <button type="button" class="edit-dropdown-item" id="menu-item-edit-scene" role="menuitem">
+              <span class="dropdown-item-icon">✏️</span>
+              <span class="dropdown-item-label">Sửa kỷ niệm này</span>
+            </button>
+            <button type="button" class="edit-dropdown-item" id="menu-item-add-scene" role="menuitem">
+              <span class="dropdown-item-icon">➕</span>
+              <span class="dropdown-item-label">Thêm kỷ niệm mới</span>
+            </button>
+            <button type="button" class="edit-dropdown-item" id="menu-item-reorder-scenes" role="menuitem">
+              <span class="dropdown-item-icon">⇅</span>
+              <span class="dropdown-item-label">Sắp xếp thứ tự</span>
+            </button>
+            <button type="button" class="edit-dropdown-item" id="menu-item-reset-progress" role="menuitem">
+              <span class="dropdown-item-icon">🔄</span>
+              <span class="dropdown-item-label">Reset tiến trình xem</span>
+            </button>
+            <div class="edit-dropdown-divider" role="separator"></div>
+            <button type="button" class="edit-dropdown-item edit-dropdown-item-danger" id="menu-item-exit-edit" role="menuitem">
+              <span class="dropdown-item-icon">🚪</span>
+              <span class="dropdown-item-label">Tắt chế độ sửa</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Dải tiến trình mini — con trực tiếp của .scene-container, luôn hiện kể cả ở Epilogue -->
@@ -187,6 +223,15 @@
       </div>
     </div>
   </div>
+
+  <!-- Nút Trợ Giúp / Hướng Dẫn Sử Dụng (Nổi góc dưới trái) -->
+  <button type="button" id="guide-btn" class="guide-floating-btn" aria-label="Hướng dẫn sử dụng" title="Hướng dẫn sử dụng">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+    </svg>
+  </button>
 
   <!-- Thanh Điều Hướng Cố Định Đáy (Bottom Navigation Bar) -->
   <nav id="bottom-nav" class="bottom-nav" aria-label="Thanh điều hướng chính">
@@ -618,8 +663,100 @@
         <!-- Render động danh sách kỷ niệm -->
       </div>
       <div class="edit-modal-actions">
+        <button type="button" id="reorder-reset-btn" class="pin-btn pin-btn-delete" title="Reset toàn bộ tiến trình mở khoá trên thiết bị này">Reset tiến trình</button>
         <button type="button" id="reorder-cancel-btn" class="pin-btn pin-btn-cancel">Huỷ</button>
         <button type="button" id="reorder-save-btn" class="pin-btn pin-btn-confirm">Lưu thứ tự</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Hướng Dẫn Sử Dụng (User Guide Modal) -->
+  <div id="user-guide-modal" class="pin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="user-guide-title">
+    <div class="pin-modal-card guide-modal-card">
+      <div class="edit-modal-header guide-modal-header">
+        <h3 id="user-guide-title">💌 Hướng Dẫn Cho Em</h3>
+        <button type="button" id="user-guide-close-x" class="edit-modal-close-x" aria-label="Đóng">&times;</button>
+      </div>
+
+      <!-- Segmented Control 2 Tab -->
+      <div class="guide-tabs-nav" role="tablist">
+        <button type="button" class="guide-tab-btn active" id="guide-tab-btn-journey" data-guide-tab="journey" role="tab" aria-selected="true">
+          <span>📖 Hành Trình Yêu</span>
+        </button>
+        <button type="button" class="guide-tab-btn" id="guide-tab-btn-gallery" data-guide-tab="gallery" role="tab" aria-selected="false">
+          <span>📸 Góc Ảnh Chung</span>
+        </button>
+      </div>
+
+      <!-- Nội dung Tab 1: Hành Trình Yêu Thương -->
+      <div id="guide-content-journey" class="guide-tab-content active">
+        <div class="guide-step">
+          <div class="guide-step-icon">💌</div>
+          <div class="guide-step-body">
+            <h4 class="guide-step-title">1. Mở từng phong thư kỷ niệm</h4>
+            <p class="guide-step-desc">Mỗi trạm dừng là một câu chuyện, một bức ảnh và những dòng tâm sự anh đã nắn nót viết riêng cho em. Em hãy đọc chậm rãi để cùng anh quay về những ngày tháng ấy nhé.</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-step-icon">🧩</div>
+          <div class="guide-step-body">
+            <h4 class="guide-step-title">2. Mở khoá điều bất ngờ</h4>
+            <p class="guide-step-desc">Ở cuối mỗi bức thư sẽ có một câu hỏi nhỏ về chuyện hai đứa mình. Trả lời đúng sẽ mở ra chiếc chìa khoá dẫn đến kỷ niệm tiếp theo. Đừng lo lắng nếu lỡ quên, luôn có gợi ý nhỏ xinh dành cho em đó!</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-step-icon">🕰️</div>
+          <div class="guide-step-body">
+            <h4 class="guide-step-title">3. Ôn lại kỷ niệm cũ bất cứ lúc nào</h4>
+            <p class="guide-step-desc">Khi muốn đọc lại các kỷ niệm đã qua, em chỉ cần chạm vào các chấm nhỏ trên đầu màn hình, hoặc vuốt nhẹ xuống dưới. Bấm nút hoa hồng ở góc phải để quay lại kỷ niệm mới nhất nhé.</p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-step-icon">🌿</div>
+          <div class="guide-step-body">
+            <h4 class="guide-step-title">4. Ba góc nhỏ của hai đứa</h4>
+            <p class="guide-step-desc">Dưới cùng màn hình là 3 lối đi riêng:</p>
+            <ul class="guide-sublist">
+              <li><strong>Ảnh chung:</strong> Nơi lưu giữ những khoảnh khắc đẹp nhất của chúng mình.</li>
+              <li><strong>Hành trình:</strong> Chuyến xe kỷ niệm em đang đi.</li>
+              <li><strong>Ghi chú:</strong> Những lời nhắn gửi và điều ước anh gửi đến em.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nội dung Tab 2: Góc Ảnh Của Chúng Mình -->
+      <div id="guide-content-gallery" class="guide-tab-content hidden">
+        <div class="guide-step">
+          <div class="guide-step-icon">🌐</div>
+          <div class="guide-step-body">
+            <h4 class="guide-step-title">1. Lấy link ảnh (Chỉ mất 10 giây)</h4>
+            <p class="guide-step-desc">
+              1. Mở trang web: <a href="https://postimages.org" target="_blank" rel="noopener noreferrer" class="guide-external-link">postimages.org ↗</a> (hoàn toàn miễn phí, không cần đăng ký tài khoản).<br>
+              2. Tìm nút để tải ảnh lên (thường ghi kiểu <em>"Choose images"</em> hoặc <em>"Upload"</em>) và chọn bức ảnh đẹp nhất từ máy em.<br>
+              3. Sau khi tải xong, tìm dòng có chữ <strong>"Direct link"</strong> và bấm sao chép đường link đó.
+            </p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-step-icon">📥</div>
+          <div class="guide-step-body">
+            <h4 class="guide-step-title">2. Dán vào album của chúng mình</h4>
+            <p class="guide-step-desc">
+              1. Quay lại tab <strong>"Ảnh chung"</strong> ở đây, bấm nút <strong>"+ Thêm ảnh"</strong>.<br>
+              2. Dán đường link vừa sao chép vào ô <em>Link ảnh</em>.<br>
+              3. Viết vài dòng cảm xúc hoặc ngày tháng đáng nhớ, rồi bấm <strong>"Lưu khoảnh khắc"</strong> là xong nè!
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="edit-modal-actions guide-modal-actions">
+        <button type="button" id="user-guide-confirm-btn" class="pin-btn pin-btn-confirm guide-confirm-btn">Đã hiểu rồi nè ✨</button>
       </div>
     </div>
   </div>
@@ -639,9 +776,9 @@
   <script src="./data.js"></script>
 
   <!-- Firebase bridge (ES Module) -->
-  <script type="module" src="./firebase-bridge.js?v=12"></script>
+  <script type="module" src="./firebase-bridge.js?v=15"></script>
 
   <!-- Logic game -->
-  <script src="./main.js?v=12"></script>
+  <script src="./main.js?v=15"></script>
 </body>
 </html>

@@ -85,6 +85,9 @@ class GameController {
 
     // Khởi tạo Modal sắp xếp thứ tự kỷ niệm (Reorder)
     this.initReorderModal();
+
+    // Khởi tạo Hướng dẫn sử dụng (User Guide)
+    this.initUserGuide();
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -1808,9 +1811,66 @@ class GameController {
     // Khởi tạo các thành phần form thêm scene mới
     this.initAddSceneModal();
 
+    // Tham chiếu DOM dropdown menu 3 chấm
+    this.editDropdownWrapper   = document.getElementById('edit-dropdown-wrapper');
+    this.editMenuBtn           = document.getElementById('edit-menu-btn');
+    this.editDropdownMenu      = document.getElementById('edit-dropdown-menu');
+    this.menuItemEditScene     = document.getElementById('menu-item-edit-scene');
+    this.menuItemAddScene      = document.getElementById('menu-item-add-scene');
+    this.menuItemReorderScenes = document.getElementById('menu-item-reorder-scenes');
+    this.menuItemResetProgress = document.getElementById('menu-item-reset-progress');
+    this.menuItemExitEdit      = document.getElementById('menu-item-exit-edit');
+
     // 1. Phục hồi trạng thái edit mode từ sessionStorage trong phiên làm việc
     const savedEditMode = sessionStorage.getItem('isEditMode') === 'true';
     this.setEditMode(savedEditMode);
+
+    // Toggle dropdown 3 chấm khi bấm vào nút
+    if (this.editMenuBtn) {
+      this.editMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleEditMenu();
+      });
+    }
+
+    // Các lựa chọn trong dropdown menu
+    if (this.menuItemEditScene) {
+      this.menuItemEditScene.addEventListener('click', () => {
+        this.closeEditMenu();
+        this.openEditSceneModal();
+      });
+    }
+    if (this.menuItemAddScene) {
+      this.menuItemAddScene.addEventListener('click', () => {
+        this.closeEditMenu();
+        this.openAddSceneModal();
+      });
+    }
+    if (this.menuItemReorderScenes) {
+      this.menuItemReorderScenes.addEventListener('click', () => {
+        this.closeEditMenu();
+        this.openReorderModal();
+      });
+    }
+    if (this.menuItemResetProgress) {
+      this.menuItemResetProgress.addEventListener('click', () => {
+        this.closeEditMenu();
+        this.resetProgress();
+      });
+    }
+    if (this.menuItemExitEdit) {
+      this.menuItemExitEdit.addEventListener('click', () => {
+        this.closeEditMenu();
+        this.setEditMode(false);
+      });
+    }
+
+    // Đóng dropdown khi click ra ngoài
+    document.addEventListener('click', (e) => {
+      if (this.editDropdownWrapper && !this.editDropdownWrapper.contains(e.target)) {
+        this.closeEditMenu();
+      }
+    });
 
     if (!this.editModeBtn) return;
 
@@ -1862,10 +1922,15 @@ class GameController {
       });
     }
 
-    // Phím Escape đóng modal
+    // Phím Escape đóng modal PIN & đóng dropdown menu
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.pinModal && !this.pinModal.classList.contains('hidden')) {
-        this.closePinModal();
+      if (e.key === 'Escape') {
+        if (this.pinModal && !this.pinModal.classList.contains('hidden')) {
+          this.closePinModal();
+        }
+        if (this.editDropdownMenu && !this.editDropdownMenu.classList.contains('hidden')) {
+          this.closeEditMenu();
+        }
       }
     });
   }
@@ -1960,10 +2025,13 @@ class GameController {
       if (this.editBadge) {
         this.editBadge.classList.remove('hidden');
       }
+      if (this.editDropdownWrapper) {
+        this.editDropdownWrapper.classList.remove('hidden');
+      }
       document.body.classList.add('edit-mode-active');
-      this.renderEditSceneButton();
-      this.renderAddSceneButton();
-      this.renderReorderSceneButton();
+      this.removeEditSceneButton();
+      this.removeAddSceneButton();
+      this.removeReorderSceneButton();
       if (this.galleryAddBtn) {
         this.galleryAddBtn.classList.remove('hidden');
       }
@@ -1977,6 +2045,10 @@ class GameController {
       if (this.editBadge) {
         this.editBadge.classList.add('hidden');
       }
+      if (this.editDropdownWrapper) {
+        this.editDropdownWrapper.classList.add('hidden');
+      }
+      this.closeEditMenu();
       document.body.classList.remove('edit-mode-active');
       this.removeEditSceneButton();
       this.removeAddSceneButton();
@@ -1992,35 +2064,47 @@ class GameController {
     }
   }
 
+  /**
+   * Mở hoặc đóng menu dropdown 3 chấm
+   */
+  toggleEditMenu() {
+    if (!this.editDropdownMenu) return;
+    const isHidden = this.editDropdownMenu.classList.contains('hidden');
+    if (isHidden) {
+      this.openEditMenu();
+    } else {
+      this.closeEditMenu();
+    }
+  }
+
+  /**
+   * Mở menu dropdown 3 chấm
+   */
+  openEditMenu() {
+    if (!this.editDropdownMenu) return;
+    this.editDropdownMenu.classList.remove('hidden');
+    if (this.editMenuBtn) {
+      this.editMenuBtn.setAttribute('aria-expanded', 'true');
+    }
+  }
+
+  /**
+   * Đóng menu dropdown 3 chấm
+   */
+  closeEditMenu() {
+    if (!this.editDropdownMenu) return;
+    this.editDropdownMenu.classList.add('hidden');
+    if (this.editMenuBtn) {
+      this.editMenuBtn.setAttribute('aria-expanded', 'false');
+    }
+  }
+
   // ══════════════════════════════════════════════════════════════
   // QUẢN LÝ FORM & NÚT CHỈNH SỬA SCENE HIỆN TẠI
   // ══════════════════════════════════════════════════════════════
 
-  /**
-   * Render nút "Sửa" vào DOM khi edit mode bật
-   * (Chỉ render khi isEditMode === true, tránh lộ UI khi tắt)
-   */
   renderEditSceneButton() {
-    if (document.getElementById('edit-scene-btn')) return;
-
-    const container = document.getElementById('edit-controls-container') || document.querySelector('.scene-container');
-    if (!container) return;
-
-    const btn = document.createElement('button');
-    btn.id = 'edit-scene-btn';
-    btn.className = 'edit-scene-btn';
-    btn.type = 'button';
-    btn.title = 'Chỉnh sửa nội dung kỷ niệm đang xem';
-    btn.innerHTML = `
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 20h9"></path>
-        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-      </svg>
-      <span>Sửa</span>
-    `;
-
-    btn.addEventListener('click', () => this.openEditSceneModal());
-    container.appendChild(btn);
+    // Đã chuyển vào dropdown menu 3 chấm (#menu-item-edit-scene)
   }
 
   /**
@@ -2786,31 +2870,8 @@ class GameController {
   // QUẢN LÝ FORM & NÚT THÊM KỶ NIỆM MỚI (FRACTIONAL INDEXING)
   // ══════════════════════════════════════════════════════════════
 
-  /**
-   * Render nút "+ Thêm" vào DOM khi edit mode bật
-   * (Chỉ render khi isEditMode === true, tránh lộ UI khi tắt)
-   */
   renderAddSceneButton() {
-    if (document.getElementById('add-scene-btn')) return;
-
-    const container = document.getElementById('edit-controls-container') || document.querySelector('.scene-container');
-    if (!container) return;
-
-    const btn = document.createElement('button');
-    btn.id = 'add-scene-btn';
-    btn.className = 'add-scene-btn';
-    btn.type = 'button';
-    btn.title = 'Thêm kỷ niệm mới';
-    btn.innerHTML = `
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19"></line>
-        <line x1="5" y1="12" x2="19" y2="12"></line>
-      </svg>
-      <span>+ Thêm</span>
-    `;
-
-    btn.addEventListener('click', () => this.openAddSceneModal());
-    container.appendChild(btn);
+    // Đã chuyển vào dropdown menu 3 chấm (#menu-item-add-scene)
   }
 
   /**
@@ -3090,30 +3151,8 @@ class GameController {
   // QUẢN LÝ MODAL SẮP XẾP THỨ TỰ KỶ NIỆM (REORDER SCENES)
   // ══════════════════════════════════════════════════════════════
 
-  /**
-   * Render nút "Thứ tự" vào DOM khi edit mode bật
-   */
   renderReorderSceneButton() {
-    if (document.getElementById('reorder-scenes-btn')) return;
-
-    const container = document.getElementById('edit-controls-container') || document.querySelector('.scene-container');
-    if (!container) return;
-
-    const btn = document.createElement('button');
-    btn.id = 'reorder-scenes-btn';
-    btn.className = 'reorder-scene-btn';
-    btn.type = 'button';
-    btn.title = 'Sắp xếp lại thứ tự kỷ niệm';
-    btn.innerHTML = `
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="7 15 12 20 17 15"></polyline>
-        <polyline points="7 9 12 4 17 9"></polyline>
-      </svg>
-      <span>Thứ tự</span>
-    `;
-
-    btn.addEventListener('click', () => this.openReorderModal());
-    container.appendChild(btn);
+    // Đã chuyển vào dropdown menu 3 chấm (#menu-item-reorder-scenes)
   }
 
   /**
@@ -3133,6 +3172,7 @@ class GameController {
     this.reorderCloseX    = document.getElementById('reorder-close-x');
     this.reorderCancelBtn = document.getElementById('reorder-cancel-btn');
     this.reorderSaveBtn   = document.getElementById('reorder-save-btn');
+    this.reorderResetBtn  = document.getElementById('reorder-reset-btn');
     this.reorderErrorMsg  = document.getElementById('reorder-error-msg');
 
     if (this.reorderCloseX) {
@@ -3141,6 +3181,10 @@ class GameController {
 
     if (this.reorderCancelBtn) {
       this.reorderCancelBtn.addEventListener('click', () => this.closeReorderModal());
+    }
+
+    if (this.reorderResetBtn) {
+      this.reorderResetBtn.addEventListener('click', () => this.resetProgress());
     }
 
     if (this.reorderModal) {
@@ -3152,6 +3196,24 @@ class GameController {
     if (this.reorderSaveBtn) {
       this.reorderSaveBtn.addEventListener('click', () => this.saveReorderedScenes());
     }
+  }
+
+  /**
+   * Reset toàn bộ tiến trình mở khoá trên thiết bị này (localStorage)
+   */
+  resetProgress() {
+    const message = "Reset sẽ xoá tiến trình mở khoá đã lưu TRÊN THIẾT BỊ NÀY, người xem sẽ phải làm lại từ đầu. Hành động này không ảnh hưởng tới thiết bị khác. Bạn có chắc chắn?";
+    if (!window.confirm(message)) return;
+
+    try {
+      localStorage.removeItem('lj_max_unlocked_index');
+      sessionStorage.removeItem('lj_max_unlocked_index');
+    } catch (_) {}
+
+    this.maxUnlockedIndex = 0;
+    this.closeReorderModal();
+    this.loadScene(0);
+    console.log('[LoveJourney] Đã reset tiến trình mở khoá trên thiết bị này về 0.');
   }
 
   /**
@@ -3425,6 +3487,118 @@ class GameController {
       }
       if (this.reorderCancelBtn) this.reorderCancelBtn.disabled = false;
     }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // HƯỚNG DẪN SỬ DỤNG (USER GUIDE ONBOARDING)
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * Khởi tạo các phần tử và sự kiện cho modal Hướng Dẫn Sử Dụng
+   */
+  initUserGuide() {
+    this.guideBtn            = document.getElementById('guide-btn');
+    this.userGuideModal      = document.getElementById('user-guide-modal');
+    this.userGuideCloseX     = document.getElementById('user-guide-close-x');
+    this.userGuideConfirmBtn = document.getElementById('user-guide-confirm-btn');
+    this.guideTabBtns        = document.querySelectorAll('.guide-tab-btn');
+    this.guideTabContents    = {
+      journey: document.getElementById('guide-content-journey'),
+      gallery: document.getElementById('guide-content-gallery')
+    };
+
+    // Nút mở modal "?" góc dưới trái
+    if (this.guideBtn) {
+      this.guideBtn.addEventListener('click', () => this.openUserGuide());
+    }
+
+    // Nút đóng modal (nút X & nút "Đã hiểu rồi nè ✨")
+    if (this.userGuideCloseX) {
+      this.userGuideCloseX.addEventListener('click', () => this.closeUserGuide());
+    }
+    if (this.userGuideConfirmBtn) {
+      this.userGuideConfirmBtn.addEventListener('click', () => this.closeUserGuide());
+    }
+
+    // Đóng khi bấm vào backdrop mờ
+    if (this.userGuideModal) {
+      this.userGuideModal.addEventListener('click', (e) => {
+        if (e.target === this.userGuideModal) this.closeUserGuide();
+      });
+    }
+
+    // Phím Escape để đóng modal hướng dẫn
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.userGuideModal && !this.userGuideModal.classList.contains('hidden')) {
+        this.closeUserGuide();
+      }
+    });
+
+    // Chuyển tab con (Segmented Control)
+    if (this.guideTabBtns) {
+      this.guideTabBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const tabKey = btn.dataset.guideTab;
+          if (tabKey) this.switchGuideTab(tabKey);
+        });
+      });
+    }
+
+    // Tự động mở lần đầu tiên (~0.8s sau khi tải dữ liệu, độc lập với tiến trình chơi)
+    try {
+      const hasSeen = localStorage.getItem('lj_guide_seen');
+      if (!hasSeen) {
+        setTimeout(() => {
+          this.openUserGuide();
+        }, 800);
+      }
+    } catch (_) {}
+  }
+
+  /**
+   * Chuyển tab con trong modal hướng dẫn (journey | gallery)
+   */
+  switchGuideTab(tabKey) {
+    if (!this.guideTabContents || !this.guideTabContents[tabKey]) return;
+
+    if (this.guideTabBtns) {
+      this.guideTabBtns.forEach((btn) => {
+        const isActive = btn.dataset.guideTab === tabKey;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+    }
+
+    Object.keys(this.guideTabContents).forEach((key) => {
+      const content = this.guideTabContents[key];
+      if (content) {
+        if (key === tabKey) {
+          content.classList.remove('hidden');
+        } else {
+          content.classList.add('hidden');
+        }
+      }
+    });
+  }
+
+  /**
+   * Mở modal hướng dẫn
+   */
+  openUserGuide() {
+    if (!this.userGuideModal) return;
+    this.switchGuideTab('journey');
+    this.userGuideModal.classList.remove('hidden');
+  }
+
+  /**
+   * Đóng modal hướng dẫn và lưu cờ đã xem vào localStorage
+   */
+  closeUserGuide() {
+    if (!this.userGuideModal) return;
+    this.userGuideModal.classList.add('hidden');
+    try {
+      localStorage.setItem('lj_guide_seen', 'true');
+    } catch (_) {}
   }
 }
 
